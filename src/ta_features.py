@@ -3,11 +3,14 @@
 Auto-register pandas_ta indicators as features with default parameters.
 
 Reads the filtered catalog at data/pandas_ta_catalog_filtered.json and
-registers one feature per indicator. Each feature computes the indicator with
-default parameters and returns a single Series. If the indicator returns
-multiple columns, the first column is used as the primary output.
-
-Feature naming: "ta_{category}_{indicator}".
+registers feature functions for every indicator. Indicators that return a
+single Series become one feature named ``"ta_{category}_{indicator}"``. If an
+indicator returns a ``DataFrame`` with multiple columns, a separate feature is
+registered for each column named ``"ta_{category}_{indicator}_{column}"``.
+Each feature recomputes the indicator on demand and returns the selected
+output column. For example, ``pandas_ta.macd`` yields features
+``ta_momentum_macd_macd``, ``ta_momentum_macd_signal``, and
+``ta_momentum_macd_histogram``.
 
 Usage:
     import src.ta_features  # triggers registration on import
@@ -106,27 +109,6 @@ def _build_kwargs(df: pd.DataFrame, param_names: List[str]) -> Dict[str, Any]:
     return kwargs
 
 
-def _primary_series(result: Any) -> pd.Series:
-    """Coerce indicator output to a single Series.
-
-    - If it's a Series, return as-is.
-    - If it's a DataFrame, return the first column.
-    - If it's array-like, wrap into a Series without name.
-    """
-    if isinstance(result, pd.Series):
-        return result
-    if hasattr(result, "iloc") and hasattr(result, "columns"):
-        # DataFrame-like
-        s = result.iloc[:, 0]
-        return s
-    # Fallback: try to convert
-    try:
-        return pd.Series(result)
-    except Exception:
-        # ultimate fallback: empty series of length df
-        return pd.Series(dtype=float)
-
-
 _ALLOWED_REQUIRED = {
     # direct OHLCV and common aliases
     "open", "open_", "o", "high", "h", "low", "l", "close", "c", "volume", "vol", "v",
@@ -142,8 +124,6 @@ def _register_indicator(cat: str, name: str, params_meta: List[Dict[str, Any]]) 
         func = getattr(mod, name)
     except Exception:
         return False  # skip if not found in this install
-
-    feat_name = f"ta_{cat}_{name}"
 
     # Skip indicators whose required params are not satisfiable from OHLCV/derived
     required = [p.get("name", "").lower() for p in params_meta if str(p.get("default")) == "<required>"]
@@ -166,23 +146,81 @@ def _register_indicator(cat: str, name: str, params_meta: List[Dict[str, Any]]) 
                 kw[k] = s.astype(float)
         return kw
 
+    # Discover indicator columns by running once on a dummy OHLCV DataFrame
+    idx = pd.RangeIndex(10)
+    dummy = pd.DataFrame(
+        {
+            "open": pd.Series(np.arange(1, 11, dtype=float), index=idx),
+            "high": pd.Series(np.arange(1, 11, dtype=float) + 1, index=idx),
+            "low": pd.Series(np.arange(1, 11, dtype=float) - 1, index=idx),
+            "close": pd.Series(np.arange(1, 11, dtype=float), index=idx),
+            "volume": pd.Series(np.arange(1, 11, dtype=float), index=idx),
+        }
+    )
+    dkw = _build_kwargs(dummy, param_names)
+    if cat == "candles":
+        dkw = _sanitize_ohlc_in_kwargs(dkw)
+        if "asbool" in [p.lower() for p in param_names] or name == "cdl_pattern":
+            dkw.setdefault("asbool", True)
+    try:
+        dres = func(**dkw)
+    except TypeError:
+        pos = [dkw[k] for k in param_names if k in dkw]
+        dres = func(*pos)
+    except Exception:
+        return False
+
+    columns: List[str] = list(getattr(dres, "columns", []))
+
+    if columns:
+        for col in columns:
+            feat_name = f"ta_{cat}_{name}_{col}"
+
+            @registry.register_feature(feat_name)
+            def _feature(df: pd.DataFrame, col=col, feat_name=feat_name) -> pd.Series:
+                kwargs = _build_kwargs(df, param_names)
+                if cat == "candles":
+                    kwargs = _sanitize_ohlc_in_kwargs(kwargs)
+                    if "asbool" in [p.lower() for p in param_names] or name == "cdl_pattern":
+                        kwargs.setdefault("asbool", True)
+                try:
+                    res = func(**kwargs)
+                except TypeError:
+                    pos = [kwargs[k] for k in param_names if k in kwargs]
+                    res = func(*pos)
+                if hasattr(res, "__getitem__"):
+                    try:
+                        s = res[col]
+                    except Exception:
+                        s = res
+                else:
+                    s = res
+                if not isinstance(s, pd.Series):
+                    try:
+                        s = pd.Series(s)
+                    except Exception:
+                        s = pd.Series(dtype=float)
+                s.name = feat_name
+                return s
+
+        return True
+
+    # Fallback: single output
+    feat_name = f"ta_{cat}_{name}"
+
     @registry.register_feature(feat_name)
-    def _feature(df: pd.DataFrame) -> pd.Series:
+    def _feature(df: pd.DataFrame, feat_name=feat_name) -> pd.Series:
         kwargs = _build_kwargs(df, param_names)
-        # Special handling for candle indicators
         if cat == "candles":
             kwargs = _sanitize_ohlc_in_kwargs(kwargs)
-            # Many candle functions accept 'asbool' to avoid int-coded patterns that require int casting
             if "asbool" in [p.lower() for p in param_names] or name == "cdl_pattern":
-                # For cdl_pattern, **kwargs is forwarded to pattern functions
                 kwargs.setdefault("asbool", True)
         try:
             res = func(**kwargs)
         except TypeError:
-            # Some functions are positional (e.g., high, low) — try positional order
             pos = [kwargs[k] for k in param_names if k in kwargs]
             res = func(*pos)
-        s = _primary_series(res)
+        s = res if isinstance(res, pd.Series) else pd.Series(res)
         s.name = feat_name
         return s
 
