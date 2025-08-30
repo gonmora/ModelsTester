@@ -1,3 +1,12 @@
 
 # Datos pesados
 *.parquet
+
+# Jupyter
+.ipynb_checkpoints/
+**/*-checkpoint.ipynb
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
