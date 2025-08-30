@@ -1,4 +1,14 @@
 
+
+# Datos (ignorar todo el contenido de data/)
+data/**
+
+# (Opcional) Dejar rastreados solo estos dentro de data/
+!data/.gitkeep
+!data/README.md
+!data/samples/**
+
+
 # Datos pesados
 *.parquet
 
