@@ -45,6 +45,24 @@ def _df_path(name: str) -> str:
     return os.path.join(DATA_DIR, f"{name}.parquet")
 
 
+def _normalize_date(date_str: str) -> str:
+    """Normalize `YYYYMMDD` strings to ``YYYY-MM-DD 00:00:00``.
+
+    Parameters
+    ----------
+    date_str : str
+        Date string that may be in compact ``YYYYMMDD`` form.
+
+    Returns
+    -------
+    str
+        The date in ISO format with a time component set to midnight.
+    """
+    if len(date_str) == 8 and date_str.isdigit():
+        return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]} 00:00:00"
+    return date_str
+
+
 def save_dataframe(name: str, df: pd.DataFrame) -> None:
     """Save a pandas DataFrame to disk under the given name."""
     path = _df_path(name)
@@ -68,6 +86,9 @@ def load_dataframe(name: str) -> pd.DataFrame:
         symbol, period, start, end = name.split("_", 3)
     except ValueError:
         raise FileNotFoundError(f"DataFrame '{name}' not found at {path}")
+    # Normalize compact date strings if necessary
+    start = _normalize_date(start)
+    end = _normalize_date(end)
     # Fetch raw data from the database
     df_raw = db_to_df(symbol, period, start, end)
     # Fill OHLCV gaps
