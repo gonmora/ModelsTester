@@ -65,3 +65,39 @@ def finish_run(
          json.dumps(artifacts, sort_keys=True) if artifacts else None,
          err, run_id)
     )
+
+def get_run(con: sqlite3.Connection, run_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch a run row by run_id with parsed JSON fields.
+
+    Returns a dict with keys: run_id, run_key, status, started_at, finished_at,
+    selection, metrics, artifacts, error_msg. Returns None if not found.
+    """
+    cur = con.execute(
+        """SELECT run_id, run_key, status, started_at, finished_at,
+                   selection_json, metrics_json, artifacts_json, error_msg
+               FROM runs WHERE run_id = ? LIMIT 1;""",
+        (run_id,)
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    (
+        rid, rkey, status, started_at, finished_at,
+        selection_json, metrics_json, artifacts_json, error_msg
+    ) = row
+    def _parse(s: Optional[str]) -> Any:
+        try:
+            return json.loads(s) if s else None
+        except Exception:
+            return None
+    return {
+        "run_id": rid,
+        "run_key": rkey,
+        "status": status,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "selection": _parse(selection_json) or {},
+        "metrics": _parse(metrics_json) or {},
+        "artifacts": _parse(artifacts_json) or {},
+        "error_msg": error_msg,
+    }

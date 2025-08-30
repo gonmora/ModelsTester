@@ -1,0 +1,5509 @@
+{
+  "pandas_ta_version": "0.3.14b0",
+  "total_count": 122,
+  "kept_categories": [
+    "candles",
+    "momentum",
+    "overlap",
+    "statistics",
+    "trend",
+    "volume"
+  ],
+  "excluded_categories": [
+    "alphavantage",
+    "core",
+    "cycles",
+    "data",
+    "performance",
+    "utils",
+    "yahoofinance"
+  ],
+  "flagged_lookahead": [
+    {
+      "category": "overlap",
+      "indicator": "ichimoku"
+    },
+    {
+      "category": "trend",
+      "indicator": "dpo"
+    }
+  ],
+  "categories": {
+    "candles": {
+      "count": 6,
+      "indicators": {
+        "cdl": {
+          "signature": "(open_, high, low, close, name: Union[str, Sequence[str]] = 'all', scalar=None, offset=None, **kwargs) -> pandas.core.frame.DataFrame",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "name",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "'all'",
+              "annotation": "typing.Union[str, typing.Sequence[str]]"
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cdl_doji": {
+          "signature": "(open_, high, low, close, length=None, factor=None, scalar=None, asint=True, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "factor",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asint",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "True",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cdl_inside": {
+          "signature": "(open_, high, low, close, asbool=False, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "asbool",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "False",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cdl_pattern": {
+          "signature": "(open_, high, low, close, name: Union[str, Sequence[str]] = 'all', scalar=None, offset=None, **kwargs) -> pandas.core.frame.DataFrame",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "name",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "'all'",
+              "annotation": "typing.Union[str, typing.Sequence[str]]"
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cdl_z": {
+          "signature": "(open_, high, low, close, length=None, full=None, ddof=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "full",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "ddof",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ha": {
+          "signature": "(open_, high, low, close, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        }
+      }
+    },
+    "momentum": {
+      "count": 41,
+      "indicators": {
+        "ao": {
+          "signature": "(high, low, fast=None, slow=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "apo": {
+          "signature": "(close, fast=None, slow=None, mamode=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "bias": {
+          "signature": "(close, length=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "bop": {
+          "signature": "(open_, high, low, close, scalar=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "brar": {
+          "signature": "(open_, high, low, close, length=None, scalar=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cci": {
+          "signature": "(high, low, close, length=None, c=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "c",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cfo": {
+          "signature": "(close, length=None, scalar=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cg": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cmo": {
+          "signature": "(close, length=None, scalar=None, talib=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "coppock": {
+          "signature": "(close, length=None, fast=None, slow=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cti": {
+          "signature": "(close, length=None, offset=None, **kwargs) -> pandas.core.series.Series",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "dm": {
+          "signature": "(high, low, length=None, mamode=None, talib=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "er": {
+          "signature": "(close, length=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "eri": {
+          "signature": "(high, low, close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "fisher": {
+          "signature": "(high, low, length=None, signal=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "inertia": {
+          "signature": "(close=None, high=None, low=None, length=None, rvi_length=None, scalar=None, refined=None, thirds=None, mamode=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "rvi_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "refined",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "thirds",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "kdj": {
+          "signature": "(high=None, low=None, close=None, length=None, signal=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "kst": {
+          "signature": "(close, roc1=None, roc2=None, roc3=None, roc4=None, sma1=None, sma2=None, sma3=None, sma4=None, signal=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "roc1",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "roc2",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "roc3",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "roc4",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "sma1",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "sma2",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "sma3",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "sma4",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "macd": {
+          "signature": "(close, fast=None, slow=None, signal=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "mom": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pgo": {
+          "signature": "(high, low, close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ppo": {
+          "signature": "(close, fast=None, slow=None, signal=None, scalar=None, mamode=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "psl": {
+          "signature": "(close, open_=None, length=None, scalar=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pvo": {
+          "signature": "(volume, fast=None, slow=None, signal=None, scalar=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "qqe": {
+          "signature": "(close, length=None, smooth=None, factor=None, mamode=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "smooth",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "factor",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "roc": {
+          "signature": "(close, length=None, scalar=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "rsi": {
+          "signature": "(close, length=None, scalar=None, talib=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "rsx": {
+          "signature": "(close, length=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "rvgi": {
+          "signature": "(open_, high, low, close, length=None, swma_length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "swma_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "slope": {
+          "signature": "(close, length=None, as_angle=None, to_degrees=None, vertical=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "as_angle",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "to_degrees",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "vertical",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "smi": {
+          "signature": "(close, fast=None, slow=None, signal=None, scalar=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "squeeze": {
+          "signature": "(high, low, close, bb_length=None, bb_std=None, kc_length=None, kc_scalar=None, mom_length=None, mom_smooth=None, use_tr=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "bb_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "bb_std",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kc_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kc_scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mom_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mom_smooth",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "use_tr",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "squeeze_pro": {
+          "signature": "(high, low, close, bb_length=None, bb_std=None, kc_length=None, kc_scalar_wide=None, kc_scalar_normal=None, kc_scalar_narrow=None, mom_length=None, mom_smooth=None, use_tr=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "bb_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "bb_std",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kc_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kc_scalar_wide",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kc_scalar_normal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kc_scalar_narrow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mom_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mom_smooth",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "use_tr",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "stc": {
+          "signature": "(close, tclength=None, fast=None, slow=None, factor=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "tclength",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "factor",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "stoch": {
+          "signature": "(high, low, close, k=None, d=None, smooth_k=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "k",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "d",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "smooth_k",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "stochrsi": {
+          "signature": "(close, length=None, rsi_length=None, k=None, d=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "rsi_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "k",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "d",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "td_seq": {
+          "signature": "(close, asint=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "asint",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "trix": {
+          "signature": "(close, length=None, signal=None, scalar=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "tsi": {
+          "signature": "(close, fast=None, slow=None, signal=None, scalar=None, mamode=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "uo": {
+          "signature": "(high, low, close, fast=None, medium=None, slow=None, fast_w=None, medium_w=None, slow_w=None, talib=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "medium",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "fast_w",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "medium_w",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow_w",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "willr": {
+          "signature": "(high, low, close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        }
+      }
+    },
+    "overlap": {
+      "count": 33,
+      "indicators": {
+        "alma": {
+          "signature": "(close, length=None, sigma=None, distribution_offset=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "sigma",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "distribution_offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "dema": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ema": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "fwma": {
+          "signature": "(close, length=None, asc=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asc",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "hilo": {
+          "signature": "(high, low, close, high_length=None, low_length=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "low_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "hl2": {
+          "signature": "(high, low, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "hlc3": {
+          "signature": "(high, low, close, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "hma": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "hwma": {
+          "signature": "(close, na=None, nb=None, nc=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "na",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "nb",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "nc",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "jma": {
+          "signature": "(close, length=None, phase=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "phase",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "kama": {
+          "signature": "(close, length=None, fast=None, slow=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "linreg": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ma": {
+          "signature": "(name: str = None, source: pandas.core.series.Series = None, **kwargs) -> pandas.core.series.Series",
+          "params": [
+            {
+              "name": "name",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": "<class 'str'>"
+            },
+            {
+              "name": "source",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": "<class 'pandas.core.series.Series'>"
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "mcgd": {
+          "signature": "(close, length=None, offset=None, c=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "c",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "midpoint": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "midprice": {
+          "signature": "(high, low, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ohlc4": {
+          "signature": "(open_, high, low, close, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pwma": {
+          "signature": "(close, length=None, asc=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asc",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "rma": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "sinwma": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "sma": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ssf": {
+          "signature": "(close, length=None, poles=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "poles",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "supertrend": {
+          "signature": "(high, low, close, length=None, multiplier=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "multiplier",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "swma": {
+          "signature": "(close, length=None, asc=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asc",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "t3": {
+          "signature": "(close, length=None, a=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "a",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "tema": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "trima": {
+          "signature": "(close, length=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "vidya": {
+          "signature": "(close, length=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "vwap": {
+          "signature": "(high, low, close, volume, anchor=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "anchor",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "vwma": {
+          "signature": "(close, volume, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "wcp": {
+          "signature": "(high, low, close, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "wma": {
+          "signature": "(close, length=None, asc=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asc",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "zlma": {
+          "signature": "(close, length=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        }
+      }
+    },
+    "statistics": {
+      "count": 10,
+      "indicators": {
+        "entropy": {
+          "signature": "(close, length=None, base=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "base",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "kurtosis": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "mad": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "median": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "quantile": {
+          "signature": "(close, length=None, q=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "q",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "skew": {
+          "signature": "(close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "stdev": {
+          "signature": "(close, length=None, ddof=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "ddof",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "tos_stdevall": {
+          "signature": "(close, length=None, stds=None, ddof=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "stds",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "ddof",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "variance": {
+          "signature": "(close, length=None, ddof=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "ddof",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "zscore": {
+          "signature": "(close, length=None, std=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "std",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        }
+      }
+    },
+    "trend": {
+      "count": 17,
+      "indicators": {
+        "adx": {
+          "signature": "(high, low, close, length=None, lensig=None, scalar=None, mamode=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "lensig",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "amat": {
+          "signature": "(close=None, fast=None, slow=None, lookback=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "lookback",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "aroon": {
+          "signature": "(high, low, length=None, scalar=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "chop": {
+          "signature": "(high, low, close, length=None, atr_length=None, ln=None, scalar=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "atr_length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "ln",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "scalar",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cksp": {
+          "signature": "(high, low, close, p=None, x=None, q=None, tvmode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "p",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "x",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "q",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "tvmode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "decay": {
+          "signature": "(close, kind=None, length=None, mode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "kind",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "decreasing": {
+          "signature": "(close, length=None, strict=None, asint=None, percent=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "strict",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asint",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "percent",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "increasing": {
+          "signature": "(close, length=None, strict=None, asint=None, percent=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "strict",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "asint",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "percent",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "long_run": {
+          "signature": "(fast, slow, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "psar": {
+          "signature": "(high, low, close=None, af0=None, af=None, max_af=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "af0",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "af",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "max_af",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "qstick": {
+          "signature": "(open_, close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "short_run": {
+          "signature": "(fast, slow, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "tsignals": {
+          "signature": "(trend, asbool=None, trend_reset=0, trade_offset=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "trend",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "asbool",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "trend_reset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "0",
+              "annotation": ""
+            },
+            {
+              "name": "trade_offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "ttm_trend": {
+          "signature": "(high, low, close, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "vhf": {
+          "signature": "(close, length=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "vortex": {
+          "signature": "(high, low, close, length=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "xsignals": {
+          "signature": "(signal, xa, xb, above: bool = True, long: bool = True, asbool: bool = None, trend_reset: int = 0, trade_offset: int = None, offset: int = None, **kwargs)",
+          "params": [
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "xa",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "xb",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "above",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "True",
+              "annotation": "<class 'bool'>"
+            },
+            {
+              "name": "long",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "True",
+              "annotation": "<class 'bool'>"
+            },
+            {
+              "name": "asbool",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": "<class 'bool'>"
+            },
+            {
+              "name": "trend_reset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "0",
+              "annotation": "<class 'int'>"
+            },
+            {
+              "name": "trade_offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": "<class 'int'>"
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": "<class 'int'>"
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        }
+      }
+    },
+    "volume": {
+      "count": 15,
+      "indicators": {
+        "ad": {
+          "signature": "(high, low, close, volume, open_=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "adosc": {
+          "signature": "(high, low, close, volume, open_=None, fast=None, slow=None, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "aobv": {
+          "signature": "(close, volume, fast=None, slow=None, max_lookback=None, min_lookback=None, mamode=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "max_lookback",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "min_lookback",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "cmf": {
+          "signature": "(high, low, close, volume, open_=None, length=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "open_",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "efi": {
+          "signature": "(close, volume, length=None, mamode=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "eom": {
+          "signature": "(high, low, close, volume, length=None, divisor=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "divisor",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "kvo": {
+          "signature": "(high, low, close, volume, fast=None, slow=None, signal=None, mamode=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "fast",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "slow",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "signal",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "mamode",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "mfi": {
+          "signature": "(high, low, close, volume, length=None, talib=None, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "high",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "low",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "nvi": {
+          "signature": "(close, volume, length=None, initial=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "initial",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "obv": {
+          "signature": "(close, volume, talib=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "talib",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pvi": {
+          "signature": "(close, volume, length=None, initial=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "length",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "initial",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pvol": {
+          "signature": "(close, volume, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pvr": {
+          "signature": "(close, volume)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "pvt": {
+          "signature": "(close, volume, drift=None, offset=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "drift",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "offset",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        },
+        "vp": {
+          "signature": "(close, volume, width=None, **kwargs)",
+          "params": [
+            {
+              "name": "close",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "volume",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            },
+            {
+              "name": "width",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "default": "None",
+              "annotation": ""
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "default": "<required>",
+              "annotation": ""
+            }
+          ]
+        }
+      }
+    }
+  }
+}

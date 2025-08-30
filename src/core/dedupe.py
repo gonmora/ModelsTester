@@ -38,7 +38,6 @@ def make_entity_id(name: str, params: Dict[str, Any], code_hash: str, extra: Opt
 
 def make_run_key(
     df_name: str,
-    df_version: str,
     split_id: str,
     target_id: str,
     feature_ids: List[str],
@@ -51,7 +50,7 @@ def make_run_key(
     Sorting feature IDs ensures that the key is insensitive to the order of features.
     """
     payload = {
-        "df": {"name": df_name, "version": df_version, "split_id": split_id},
+        "df": {"name": df_name, "split_id": split_id},
         "target": target_id,
         "features": sorted(feature_ids),
         "model": model_id,

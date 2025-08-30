@@ -53,7 +53,6 @@ def select_components(random_state: Optional[random.Random] = None) -> Dict[str,
 
 def run_experiment(
     df_name: str,
-    df_version: str,
     split_id: str,
     seed: int = 0,
     db_path: str = "runs.db",
@@ -70,7 +69,6 @@ def run_experiment(
 
     Args:
         df_name: logical name of the dataset.
-        df_version: version identifier for the dataset.
         split_id: identifier for the train/test split.
         seed: random seed to include in the run key.
         db_path: path to the SQLite history database.
@@ -93,10 +91,14 @@ def run_experiment(
     eval_cfg_id = selection["eval_cfg"]
 
     # compute run key
-    run_key = make_run_key(df_name, df_version, split_id, target_id, feature_ids, model_id, eval_cfg_id, seed)
+    run_key = make_run_key(df_name, split_id, target_id, feature_ids, model_id, eval_cfg_id, seed)
 
     # check for duplicate
     if history.exists(con, run_key):
+        try:
+            con.close()
+        except Exception:
+            pass
         return None  # skip duplicated run
 
     # create run entry
@@ -104,24 +106,28 @@ def run_experiment(
 
     try:
         # load dataframe
-        df = storage.load_dataframe(df_name, df_version)
+        df = storage.load_dataframe(df_name)
 
         # compute or load target
-        if storage.target_exists(df_name, df_version, target_id):
-            y = storage.load_target(df_name, df_version, target_id)
+        if storage.target_exists(df_name, target_id):
+            y = storage.load_target(df_name, target_id)
         else:
             y = registry.targets[target_id](df)
-            storage.save_target(y, df_name, df_version, target_id)
+            storage.save_target(df_name, target_id, y)
 
-        # compute or load features
+        # compute or load features with skip-on-error
         features = {}
+        failed_features = []
         for fid in feature_ids:
-            if storage.feature_exists(df_name, df_version, fid):
-                x = storage.load_feature(df_name, df_version, fid)
-            else:
-                x = registry.features[fid](df)
-                storage.save_feature(x, df_name, df_version, fid)
-            features[fid] = x
+            try:
+                if storage.feature_exists(df_name, fid):
+                    x = storage.load_feature(df_name, fid)
+                else:
+                    x = registry.features[fid](df)
+                    storage.save_feature(df_name, fid, x)
+                features[fid] = x
+            except Exception as fe:
+                failed_features.append({"id": fid, "error": str(fe)})
 
         # optional: compute affinity scores for each feature with target (on training split)
         affinity_scores = {}
@@ -133,13 +139,108 @@ def run_experiment(
 
         # Fit the model (placeholder). Actual implementation depends on your models.
         model_fn = registry.models[model_id]
+        # If no features succeeded, fail early but record failures
+        if not features:
+            raise RuntimeError("No features computed successfully")
         model, metrics = model_fn(y, features, df, selection)
 
         # finish run with success
-        history.finish_run(con, run_id, "SUCCESS", metrics=metrics, artifacts={"affinity": affinity_scores})
+        history.finish_run(con, run_id, "SUCCESS", metrics=metrics, artifacts={"affinity": affinity_scores, "failed_features": failed_features})
     except Exception as e:
         # record failure
-        history.finish_run(con, run_id, "FAILED", metrics=None, artifacts=None, err=str(e))
+        # attach failed feature info if available
+        try:
+            artifacts = {"failed_features": failed_features}
+        except Exception:
+            artifacts = None
+        history.finish_run(con, run_id, "FAILED", metrics=None, artifacts=artifacts, err=str(e))
         raise
+    finally:
+        try:
+            con.close()
+        except Exception:
+            pass
+
+    return run_id
+
+
+def run_experiment_with_selection(
+    df_name: str,
+    split_id: str,
+    selection: Dict[str, Any],
+    seed: int = 0,
+    db_path: str = "runs.db",
+    random_state: Optional[random.Random] = None,
+) -> Optional[str]:
+    """Run an experiment with an explicit component selection.
+
+    Uses the same flow as run_experiment, but without random selection. Returns run_id or None if duplicate.
+    """
+    rng = random_state or random
+
+    con = history.connect(db_path)
+    history.init_db(con)
+
+    target_id = selection["target"]
+    feature_ids = selection["features"]
+    model_id = selection["model"]
+    eval_cfg_id = selection.get("eval_cfg", "default")
+
+    run_key = make_run_key(df_name, split_id, target_id, feature_ids, model_id, eval_cfg_id, seed)
+    if history.exists(con, run_key):
+        try:
+            con.close()
+        except Exception:
+            pass
+        return None
+    run_id = history.create_run(con, run_key, selection)
+
+    try:
+        df = storage.load_dataframe(df_name)
+
+        if storage.target_exists(df_name, target_id):
+            y = storage.load_target(df_name, target_id)
+        else:
+            y = registry.targets[target_id](df)
+            storage.save_target(df_name, target_id, y)
+
+        features = {}
+        failed_features = []
+        for fid in feature_ids:
+            try:
+                if storage.feature_exists(df_name, fid):
+                    x = storage.load_feature(df_name, fid)
+                else:
+                    x = registry.features[fid](df)
+                    storage.save_feature(df_name, fid, x)
+                features[fid] = x
+            except Exception as fe:
+                failed_features.append({"id": fid, "error": str(fe)})
+
+        affinity_scores = {}
+        for fid, x in features.items():
+            try:
+                affinity_scores[fid] = score_pair(y, x)
+            except Exception:
+                affinity_scores[fid] = {}
+
+        model_fn = registry.models[model_id]
+        if not features:
+            raise RuntimeError("No features computed successfully")
+        model, metrics = model_fn(y, features, df, selection)
+
+        history.finish_run(con, run_id, "SUCCESS", metrics=metrics, artifacts={"affinity": affinity_scores, "failed_features": failed_features})
+    except Exception as e:
+        try:
+            artifacts = {"failed_features": failed_features}
+        except Exception:
+            artifacts = None
+        history.finish_run(con, run_id, "FAILED", metrics=None, artifacts=artifacts, err=str(e))
+        raise
+    finally:
+        try:
+            con.close()
+        except Exception:
+            pass
 
     return run_id

@@ -24,7 +24,17 @@ if framework_path not in sys.path:
     sys.path.append(framework_path)
 
 # Import database loader and gap filling functions
-from db.db_to_df import db_to_df
+try:
+    from db.db_to_df import db_to_df
+except Exception:
+    # Allow importing reporting/engine in environments without the Framework/db package
+    # Only raise if a function that actually needs db_to_df is called.
+    def db_to_df(*args, **kwargs):  # type: ignore
+        raise ImportError(
+            "db.db_to_df is not available. This import is only required when loading raw data "
+            "into a dataframe by name. Monitoring/reporting can run without it."
+        )
+
 from .data_utils import fill_ohlc_gaps_flat
 
 # Root directory where Parquet files are stored
@@ -111,18 +121,36 @@ def _feature_path(df_name: str, feature_name: str) -> str:
 
 
 def save_feature(df_name: str, feature_name: str, data: pd.DataFrame | pd.Series) -> None:
-    """Save a feature DataFrame or Series to disk."""
+    """Save a feature DataFrame or Series to disk.
+
+    If ``data`` is a Series, it is stored as a single-column DataFrame with
+    column name set to the feature name to ensure compatibility across pandas versions.
+    """
     path = _feature_path(df_name, feature_name)
     _ensure_dir_exists(path)
-    data.to_parquet(path)
+    if isinstance(data, pd.Series):
+        df = data.to_frame(name=feature_name)
+    else:
+        df = data
+    df.to_parquet(path)
 
 
 def load_feature(df_name: str, feature_name: str) -> pd.DataFrame | pd.Series:
-    """Load a computed feature from disk."""
+    """Load a computed feature from disk.
+
+    Returns a Series if the stored parquet has a single column; otherwise a DataFrame.
+    """
     path = _feature_path(df_name, feature_name)
     if not os.path.exists(path):
-                raise FileNotFoundError(f"Feature '{feature_name}' for dataset '{df_name}' not found at {path}")
-    return pd.read_parquet(path)
+        raise FileNotFoundError(f"Feature '{feature_name}' for dataset '{df_name}' not found at {path}")
+    df = pd.read_parquet(path)
+    try:
+        # Return Series if single-column
+        if hasattr(df, 'shape') and getattr(df, 'shape', (0, 0))[1] == 1:
+            return df.iloc[:, 0]
+    except Exception:
+        pass
+    return df
 
 def feature_exists(df_name: str, feature_name: str) -> bool:
     """Return True if a computed feature exists on disk."""
@@ -134,17 +162,30 @@ def _target_path(df_name: str, target_name: str) -> str:
     return os.path.join(DATA_DIR, f"{df_name}__target__{target_name}.parquet")
 
 def save_target(df_name: str, target_name: str, data: pd.Series) -> None:
-    """Save a target Series to disk."""
+    """Save a target Series to disk.
+
+    Stored as a single-column DataFrame to be robust to pandas versions without Series.to_parquet.
+    """
     path = _target_path(df_name, target_name)
     _ensure_dir_exists(path)
-    data.to_parquet(path)
+    df = data.to_frame(name=target_name)
+    df.to_parquet(path)
 
-def load_target(df_name: str, target_name: str) -> pd.Series:
-    """Load a computed target from disk."""
+def load_target(df_name: str, target_name: str) -> pd.Series | pd.DataFrame:
+    """Load a computed target from disk.
+
+    Returns a Series if the stored parquet has a single column; otherwise a DataFrame.
+    """
     path = _target_path(df_name, target_name)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Target '{target_name}' for dataset '{df_name}' not found at {path}")
-    return pd.read_parquet(path)
+    df = pd.read_parquet(path)
+    try:
+        if hasattr(df, 'shape') and getattr(df, 'shape', (0, 0))[1] == 1:
+            return df.iloc[:, 0]
+    except Exception:
+        pass
+    return df
 
 def target_exists(df_name: str, target_name: str) -> bool:
     """Return True if a computed target exists on disk."""

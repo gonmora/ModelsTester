@@ -47,26 +47,35 @@ def score_pair(y: pd.Series, x: pd.Series, task: Literal["reg", "clf"] = "reg") 
         A dictionary with keys 'pearson', 'spearman', 'mi', 'dcor', 'n_eff'.
     """
     y_, x_ = _safe_align(y, x)
-    n = len(y_)
+    # ensure numeric float arrays and finite values only
+    y_arr = pd.to_numeric(y_, errors="coerce").to_numpy(dtype=float)
+    x_arr = pd.to_numeric(x_, errors="coerce").to_numpy(dtype=float)
+    finite = np.isfinite(y_arr) & np.isfinite(x_arr)
+    y_arr = y_arr[finite]
+    x_arr = x_arr[finite]
+    n = len(y_arr)
     # If not enough data, return NaNs
     if n < 10:
         return {"pearson": np.nan, "spearman": np.nan, "mi": np.nan, "dcor": np.nan, "n_eff": float(n)}
 
     # Pearson and Spearman correlations
-    pearson = float(pd.Series(y_).corr(pd.Series(x_), method="pearson"))
-    spearman = float(pd.Series(y_).corr(pd.Series(x_), method="spearman"))
+    if np.nanstd(y_arr) == 0 or np.nanstd(x_arr) == 0:
+        pearson = np.nan
+        spearman = np.nan
+    else:
+        pearson = float(pd.Series(y_arr).corr(pd.Series(x_arr), method="pearson"))
+        spearman = float(pd.Series(y_arr).corr(pd.Series(x_arr), method="spearman"))
 
     # Mutual information
     mi = np.nan
     try:
         from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
 
-        X = x_.to_numpy().reshape(-1, 1)
-        y_arr = y_.to_numpy()
+        X = x_arr.reshape(-1, 1)
         if task == "clf":
             # For classification, ensure y is integer labels
-            y_arr = y_arr.astype(int)
-            mi = float(mutual_info_classif(X, y_arr, discrete_features=False, random_state=0)[0])
+            y_cls = y_arr.astype(int)
+            mi = float(mutual_info_classif(X, y_cls, discrete_features=False, random_state=0)[0])
         else:
             mi = float(mutual_info_regression(X, y_arr, random_state=0)[0])
     except Exception:
@@ -77,8 +86,11 @@ def score_pair(y: pd.Series, x: pd.Series, task: Literal["reg", "clf"] = "reg") 
     dcor_val = np.nan
     try:
         import dcor
-
-        dcor_val = float(dcor.distance_correlation(x_.to_numpy(), y_.to_numpy()))
+        # distance correlation expects float arrays with variability
+        if np.nanstd(x_arr) == 0 or np.nanstd(y_arr) == 0:
+            dcor_val = np.nan
+        else:
+            dcor_val = float(dcor.distance_correlation(x_arr, y_arr))
     except Exception:
         pass
 
