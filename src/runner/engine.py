@@ -28,6 +28,12 @@ try:  # side-effect import
 except Exception:
     pass
 
+try:  # side-effect import (Peaks & Valleys components)
+    if not os.environ.get("DISABLE_PV_AUTOREG"):
+        from .. import pv_components  # noqa: F401
+except Exception:
+    pass
+
 try:  # side-effect import (feature transforms)
     from .. import feature_transforms  # noqa: F401
 except Exception:
@@ -157,16 +163,19 @@ def build_selection(
     df: pd.DataFrame,
     rng: Optional[random.Random] = None,
     weight_store: Optional[WeightStore] = None,
-    nfeat_min: int = 3,
-    nfeat_max: int = 7,
+    nfeat_min: int = 8,
+    nfeat_max: int = 20,
     model_id: Optional[str] = None,
     eval_cfg: str = DEFAULT_EVAL,
 ) -> Dict[str, Any]:
     rng = rng or random
     ws = weight_store or WeightStore()
 
-    # Targets
-    all_targets = [t for t in registry.targets.keys() if t not in ws.disabled_targets]
+    # Targets: exclude disabled and zero-weight (treated as frozen/off)
+    all_targets = [
+        t for t in registry.targets.keys()
+        if t not in ws.disabled_targets and ws.weight_for_target(t) > 0.0
+    ]
     if not all_targets:
         raise RuntimeError("No available targets to select from")
     t_weights = [ws.weight_for_target(t) for t in all_targets]
@@ -178,20 +187,39 @@ def build_selection(
     # Constraints from target
     n_eff = 0
     is_bin = False
+    task_type = 'clf'
     pos = 0
     try:
         y = registry.targets[target_id](df)
         y_nonan = y.dropna()
         n_eff = int(len(y_nonan))
-        vals = set(map(int, set(y_nonan.unique()))) if y_nonan.dtype.kind in 'biu' else set(y_nonan.unique())
+        # Determine task type (classification vs regression)
+        # Binary classification if only {0,1}
+        if y_nonan.dtype.kind in 'biu':
+            vals = set(map(int, set(y_nonan.unique())))
+        else:
+            vals = set(y_nonan.unique())
         if len(vals) <= 2 and set(vals).issubset({0, 1}):
             is_bin = True
-            pos = int(y_nonan.sum())
+            task_type = 'clf'
+            try:
+                pos = int(y_nonan.sum())
+            except Exception:
+                pos = 0
+        else:
+            # Heuristic: floats or many unique values -> regression
+            if y_nonan.dtype.kind in 'f' or y_nonan.nunique(dropna=True) > 10:
+                task_type = 'reg'
+            else:
+                task_type = 'clf'
     except Exception:
         pass
 
-    # Features universe
-    all_features = [f for f in registry.features.keys() if f not in ws.disabled_features]
+    # Features universe: exclude disabled and zero-weight
+    all_features = [
+        f for f in registry.features.keys()
+        if f not in ws.disabled_features and ws.weight_for_feature(f) > 0.0
+    ]
     if not all_features:
         raise RuntimeError("No available features to select from")
 
@@ -229,6 +257,13 @@ def build_selection(
     # Model selection
     if model_id is None:
         all_models = [m for m in registry.models.keys() if m not in ws.disabled_models]
+        # Filter by task type to avoid mixing regression/clf
+        if task_type == 'reg':
+            candidates = [m for m in all_models if m.endswith('_regressor') or m in ('hgb_regressor','tf_mlp_regressor')]
+        else:
+            candidates = [m for m in all_models if not (m.endswith('_regressor') or m in ('hgb_regressor','tf_mlp_regressor'))]
+        if candidates:
+            all_models = candidates
         if not all_models:
             # Fallback to DEFAULT_MODEL if registry empty or all disabled
             model_id = DEFAULT_MODEL if DEFAULT_MODEL in registry.models else next(iter(registry.models))
@@ -276,6 +311,19 @@ def run_loop(
     df = storage.load_dataframe(df_name)
     run_ids: List[Optional[str]] = []
     for i in range(n_runs):
+        # Sync disabled lists and weights with on-disk store to honor external edits (e.g., GUI)
+        try:
+            _ws_disk = WeightStore(ws.path)
+            ws.disabled_features = list(_ws_disk.disabled_features or [])
+            ws.disabled_targets = list(_ws_disk.disabled_targets or [])
+            ws.disabled_models = list(_ws_disk.disabled_models or [])
+            # Also refresh weights so weight=0 takes effect immediately
+            ws.features = dict(_ws_disk.features or {})
+            ws.targets = dict(_ws_disk.targets or {})
+            ws.models = dict(_ws_disk.models or {})
+            ws.k_weights = dict(_ws_disk.k_weights or {})
+        except Exception:
+            pass
         sel = build_selection(df=df, rng=rng, weight_store=ws)
         run_id = run_experiment_with_selection(
             df_name=df_name,
@@ -306,22 +354,59 @@ def run_loop(
 
 
 def _score_from_metrics(metrics: Dict[str, Any]) -> Optional[float]:
-    """Map model metrics to a [0,1] target score when possible."""
+    """Map metrics to a [0,1] score.
+
+    Conservative policy: only use AUC (or auc_median) from a sufficiently large test set.
+    Avoids inflating scores from degenerate accuracy when the test set has a single class.
+    """
     if not metrics:
         return None
-    if "auc" in metrics and metrics["auc"] is not None:
-        try:
-            auc = float(metrics["auc"])
-            return max(0.0, min(1.0, 2.0 * (auc - 0.5)))  # 0.5->0, 1.0->1
-        except Exception:
-            pass
-    for k in ("accuracy", "acc"):
-        if k in metrics and metrics[k] is not None:
+    # Require a minimally sized test set when available
+    try:
+        n_test = int(metrics.get("n_test") or 0)
+        if n_test and n_test < 30:
+            return None
+    except Exception:
+        pass
+    # Prefer AUC or auc_median for classification
+    for key in ("auc", "auc_median"):
+        if key in metrics and metrics[key] is not None:
             try:
-                acc = float(metrics[k])
-                return max(0.0, min(1.0, acc))
+                auc = float(metrics[key])
+                if not (auc == auc):  # NaN check
+                    continue
+                return max(0.0, min(1.0, 2.0 * (auc - 0.5)))
             except Exception:
-                pass
+                continue
+    # Regression/unified scoring: prefer skill, else r2, else rank correlation
+    for key in ("skill",):
+        if key in metrics and metrics[key] is not None:
+            try:
+                sk = float(metrics[key])
+                if not (sk == sk):
+                    continue
+                return max(0.0, min(1.0, sk))
+            except Exception:
+                continue
+    for key in ("r2", "r2_score"):
+        if key in metrics and metrics[key] is not None:
+            try:
+                r2 = float(metrics[key])
+                if not (r2 == r2):
+                    continue
+                return max(0.0, min(1.0, r2))
+            except Exception:
+                continue
+    for key in ("spearman", "corr_spearman", "pearson", "corr_pearson"):
+        if key in metrics and metrics[key] is not None:
+            try:
+                c = float(metrics[key])
+                if not (c == c):
+                    continue
+                return max(0.0, min(1.0, (c + 1.0) / 2.0))
+            except Exception:
+                continue
+    # No reliable score available
     return None
 
 
@@ -375,10 +460,10 @@ def _update_weights_from_run(run_id: str, db_path: str, ws: WeightStore, alpha_f
         metrics = row.get("metrics") or {}
         artifacts = row.get("artifacts") or {}
 
-        # Update target weight
+        # Update target weight (skip if disabled or zero-weight/frozen)
         tgt = selection.get("target")
         s_t = _score_from_metrics(metrics)
-        if tgt and s_t is not None:
+        if tgt and s_t is not None and tgt not in ws.disabled_targets and ws.weight_for_target(tgt) > 0.0:
             old = ws.targets.get(tgt, 1.0)
             ws.targets[tgt] = _ema(old, s_t, alpha_tgt)
             # Update target stats
@@ -391,6 +476,9 @@ def _update_weights_from_run(run_id: str, db_path: str, ws: WeightStore, alpha_f
     # Update feature weights from affinities
         aff_all = artifacts.get("affinity") or {}
         for fid in selection.get("features", []):
+            # Skip disabled or zero-weight/frozen features
+            if fid in ws.disabled_features or ws.weight_for_feature(fid) <= 0.0:
+                continue
             aff = aff_all.get(fid, {}) if isinstance(aff_all, dict) else {}
             s_f = _score_from_affinity(aff)
             old = ws.features.get(fid, 1.0)
@@ -401,9 +489,9 @@ def _update_weights_from_run(run_id: str, db_path: str, ws: WeightStore, alpha_f
             mean = float(sf.get("mean", 0.0)) + (float(s_f) - float(sf.get("mean", 0.0))) / n
             best = max(float(sf.get("best", 0.0)), float(s_f))
             ws.features_stats[fid] = {"n": n, "mean": mean, "best": best, "last": float(s_f)}
-    # Update model weights/stats based on overall run score
+    # Update model weights/stats based on overall run score (skip disabled/zero-weight)
         mdl = selection.get("model")
-        if mdl and s_t is not None:
+        if mdl and s_t is not None and mdl not in ws.disabled_models and ws.weight_for_model(mdl) > 0.0:
             oldm = ws.models.get(mdl, 1.0)
             ws.models[mdl] = _ema(oldm, s_t, alpha_tgt)
             sm = ws.models_stats.get(mdl) or {"n": 0, "mean": 0.0, "best": 0.0, "last": 0.0}

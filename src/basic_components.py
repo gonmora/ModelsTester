@@ -383,6 +383,27 @@ def _ensure_utf8_locale() -> None:
             os.environ[var] = "C.UTF-8"
     os.environ.setdefault("PYTHONUTF8", "1")
 
+def _time_stratified_split(y_series: pd.Series, min_train: int = 100, min_test: int = 100) -> int:
+    """Choose a time-aware split index ensuring both sets have at least two classes.
+
+    Scans several split fractions (making test larger if needed) and returns the
+    first that yields >=2 unique labels in both train and test and meets size thresholds.
+    Falls back to 80/20 if no suitable split is found.
+    """
+    n = int(len(y_series))
+    if n <= max(min_train + min_test, 10):
+        return int(n * 0.8)
+    # Fractions from larger train to larger test
+    for frac in (0.8, 0.75, 0.7, 0.65, 0.6):
+        split_idx = int(n * frac)
+        y_tr = y_series.iloc[:split_idx]
+        y_te = y_series.iloc[split_idx:]
+        if len(y_tr) < min_train or len(y_te) < min_test:
+            continue
+        if y_tr.dropna().nunique() >= 2 and y_te.dropna().nunique() >= 2:
+            return split_idx
+    return int(n * 0.8)
+
 # Targets: simple binary labels based on future price movement
 
 @registry.register_target('future_up')
@@ -502,7 +523,20 @@ def logistic_baseline(
         if y_clean.nunique() < 2 or len(X_clean) < 10:
             return None, {"auc": float('nan'), "accuracy": float('nan')}
 
-        split = int(len(X_clean) * 0.8)
+        def _time_stratified_split_binary(y_series: pd.Series, min_test: int = 100) -> int:
+            n = len(y_series)
+            if n <= min_test + 10:
+                return int(n * 0.8)
+            for frac in (0.8, 0.75, 0.7, 0.65, 0.6):
+                split_idx = int(n * frac)
+                y_tr, y_te = y_series.iloc[:split_idx], y_series.iloc[split_idx:]
+                if len(y_te) < min_test:
+                    continue
+                if y_tr.nunique() >= 2 and y_te.nunique() >= 2:
+                    return split_idx
+            return int(n * 0.8)
+
+        split = _time_stratified_split(y_clean, min_train=100, min_test=100)
         X_train = X_clean.iloc[:split]
         X_test = X_clean.iloc[split:]
         y_train = y_clean.iloc[:split]
@@ -598,7 +632,7 @@ def tf_mlp_baseline(
         if y_clean.nunique() < 2 or len(X_clean) < 100:
             return None, {"auc": float('nan'), "ap": float('nan')}
 
-        split = int(len(X_clean) * 0.8)
+        split = _time_stratified_split(y_clean, min_train=100, min_test=100)
         X_train_df = X_clean.iloc[:split]
         X_test_df = X_clean.iloc[split:]
         y_train = y_clean.iloc[:split]
@@ -741,7 +775,7 @@ def tf_mlp_bn_wd(
         if y_clean.nunique() < 2 or len(X_clean) < 100:
             return None, {"auc": float('nan'), "ap": float('nan')}
 
-        split = int(len(X_clean) * 0.8)
+        split = _time_stratified_split(y_clean, min_train=100, min_test=100)
         X_train_df = X_clean.iloc[:split]
         X_test_df = X_clean.iloc[split:]
         y_train = y_clean.iloc[:split]
@@ -878,7 +912,7 @@ def tf_mlp_multiclass(
         y_idx = y_vals.map(class_to_idx).astype(int)
         n_classes = len(classes)
 
-        split = int(len(X_clean) * 0.8)
+        split = _time_stratified_split(y_clean, min_train=100, min_test=100)
         X_train_df = X_clean.iloc[:split]
         X_test_df = X_clean.iloc[split:]
         y_train_idx = y_idx.iloc[:split]
@@ -1291,3 +1325,320 @@ def updown_margin_H12_k075(df: pd.DataFrame) -> pd.Series:
     y.name = 'updown_margin_H12_k075'
     return y
 
+# --- ATR-relative and regime-filtered targets ---
+def _true_range(h: pd.Series, l: pd.Series, c: pd.Series) -> pd.Series:
+    h = pd.to_numeric(h, errors='coerce')
+    l = pd.to_numeric(l, errors='coerce')
+    c = pd.to_numeric(c, errors='coerce')
+    pc = c.shift(1)
+    tr1 = (h - l).abs()
+    tr2 = (h - pc).abs()
+    tr3 = (l - pc).abs()
+    return pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+def _atr_roll(df: pd.DataFrame, length: int = 14, as_relative: bool = True) -> pd.Series:
+    """Rolling ATR (mean true range). If as_relative, return ATR/close to match return units."""
+    tr = _true_range(df.get('high'), df.get('low'), df.get('close'))
+    atr = tr.rolling(window=int(length), min_periods=max(2, int(length)//2)).mean()
+    if as_relative:
+        px = pd.to_numeric(df.get('close'), errors='coerce')
+        atr = atr / px.replace(0.0, np.nan)
+    return atr
+
+def _future_return(df: pd.DataFrame, H: int = 12, log_returns: bool = True) -> pd.Series:
+    px = pd.to_numeric(df['close'], errors='coerce')
+    if log_returns:
+        return (np.log(px.shift(-H)) - np.log(px))
+    else:
+        return (px.shift(-H) / px - 1.0)
+
+def _binary_from_band(r_fut: pd.Series, tau: pd.Series, neutral_frac: float = 0.25) -> pd.Series:
+    tau = pd.to_numeric(tau, errors='coerce')
+    lower = -tau
+    nb = float(neutral_frac) * tau.abs()
+    y = pd.Series(np.nan, index=r_fut.index, dtype='float32')
+    y = y.mask(r_fut > (tau), 1.0)
+    y = y.mask(r_fut < (lower), 0.0)
+    # values with |r_fut| <= nb remain NaN (ignored)
+    y[r_fut.isna()] = np.nan
+    return y
+
+def _adx_series(df: pd.DataFrame, length: int = 14) -> pd.Series:
+    try:
+        import pandas_ta as ta  # type: ignore
+        out = ta.adx(df.get('high'), df.get('low'), df.get('close'), length=int(length))
+        s = out.get(f'ADX_{int(length)}') if hasattr(out, 'get') else None
+        if s is None and hasattr(out, '__getitem__'):
+            s = out[f'ADX_{int(length)}']
+        return pd.to_numeric(s, errors='coerce') if s is not None else pd.Series(np.nan, index=df.index)
+    except Exception:
+        # Fallback: proxy using normalized TR
+        tr = _true_range(df.get('high'), df.get('low'), df.get('close'))
+        vol = tr.rolling(window=int(length), min_periods=max(2, int(length)//2)).mean()
+        s = 100.0 * (vol / (pd.to_numeric(df.get('close'), errors='coerce').replace(0, np.nan))).fillna(0.0)
+        return s.clip(0, 100)
+
+def _fmt_k_tag(k: float) -> str:
+    try:
+        if float(k).is_integer():
+            return str(int(k))
+    except Exception:
+        pass
+    s = f"{k}"
+    return s.replace('.', '')
+
+def _register_updown_atr_target(H: int, k: float, atr_len: int = 14, neutral_frac: float = 0.25) -> None:
+    K_tag = _fmt_k_tag(k)
+    nb_tag = f"{neutral_frac:.2f}".replace('.', '')
+    name = f"updown_atr_H{int(H)}_k{K_tag}_nb{nb_tag}"
+    if name in registry.targets:
+        return
+
+    @registry.register_target(name)
+    def _t(df: pd.DataFrame, H=H, k=k, atr_len=atr_len, neutral_frac=neutral_frac) -> pd.Series:
+        r_fut = _future_return(df, H=H, log_returns=True)
+        # Use relative ATR to compare with returns, and scale by sqrt(H)
+        atr_rel = _atr_roll(df, length=atr_len, as_relative=True).replace(0.0, np.nan)
+        tau = float(k) * atr_rel * np.sqrt(max(1, int(H)))
+        y = _binary_from_band(r_fut, tau, neutral_frac=neutral_frac)
+        y.name = name
+        return y
+
+def _register_trend_mr_atr_target(H: int, k: float, atr_len: int, adx_len: int, adx_thr: float, mode: str = 'trend', neutral_frac: float = 0.25) -> None:
+    K_tag = _fmt_k_tag(k)
+    T = int(adx_thr)
+    tag = 'trend' if mode == 'trend' else 'mr'
+    name = f"{tag}_updown_atr_H{int(H)}_k{K_tag}_adx{T}"
+    if name in registry.targets:
+        return
+
+    @registry.register_target(name)
+    def _t(df: pd.DataFrame, H=H, k=k, atr_len=atr_len, adx_len=adx_len, adx_thr=adx_thr, mode=mode, neutral_frac=neutral_frac) -> pd.Series:
+        r_fut = _future_return(df, H=H, log_returns=True)
+        atr_rel = _atr_roll(df, length=atr_len, as_relative=True).replace(0.0, np.nan)
+        tau = float(k) * atr_rel * np.sqrt(max(1, int(H)))
+        y = _binary_from_band(r_fut, tau, neutral_frac=neutral_frac)
+        adx = _adx_series(df, length=adx_len)
+        if mode == 'trend':
+            mask = adx >= float(adx_thr)
+        else:
+            mask = adx <= float(adx_thr)
+        y = y.where(mask, np.nan)
+        y.name = name
+        return y
+
+# Register a small set of ATR targets by default
+try:
+    for H in (6, 12, 36):
+        for k in (0.5, 1.0):
+            _register_updown_atr_target(H=H, k=k, atr_len=14, neutral_frac=0.25)
+    _register_trend_mr_atr_target(H=12, k=1.0, atr_len=14, adx_len=14, adx_thr=25.0, mode='trend', neutral_frac=0.25)
+    _register_trend_mr_atr_target(H=12, k=0.5, atr_len=14, adx_len=14, adx_thr=20.0, mode='mr', neutral_frac=0.25)
+except Exception:
+    pass
+
+
+# ---------------------------
+# Regression models (unified score via `skill`)
+# ---------------------------
+
+@registry.register_model('hgb_regressor')
+def hgb_regressor(
+    y: pd.Series,
+    features: dict[str, pd.Series],
+    df: pd.DataFrame,
+    selection: dict[str, any],
+):
+    """Histogram Gradient Boosting Regressor with time-aware split.
+
+    Metrics: rmse, mae, r2, spearman, baseline_rmse (mean predictor), skill = 1 - rmse/rmse_baseline.
+    """
+    try:
+        import time
+        from sklearn.experimental import enable_hist_gradient_boosting  # noqa: F401
+        from sklearn.ensemble import HistGradientBoostingRegressor
+        from sklearn.impute import SimpleImputer
+        from sklearn.pipeline import Pipeline
+        from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+        from scipy.stats import spearmanr
+
+        X = pd.concat(features, axis=1)
+        combined = pd.concat([y, X], axis=1)
+        mask = combined.iloc[:, 0].notna()
+        y_clean = pd.to_numeric(combined.loc[mask, combined.columns[0]], errors='coerce')
+        X_clean = combined.loc[mask, combined.columns[1:]]
+        X_clean = X_clean.replace([np.inf, -np.inf], np.nan)
+        try:
+            X_clean = X_clean.infer_objects(copy=False)
+        except Exception:
+            pass
+        X_clean = X_clean.dropna(axis=1, how='all')
+
+        if len(X_clean) < 200:
+            return None, {"rmse": float('nan'), "r2": float('nan')}
+
+        split = _time_stratified_split(y_clean, min_train=200, min_test=200)
+        X_tr, X_te = X_clean.iloc[:split], X_clean.iloc[split:]
+        y_tr, y_te = y_clean.iloc[:split], y_clean.iloc[split:]
+
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("reg", HistGradientBoostingRegressor(
+                learning_rate=0.05,
+                max_iter=600,
+                min_samples_leaf=100,
+                early_stopping=True,
+                validation_fraction=0.1,
+                random_state=0,
+            )),
+        ])
+
+        t0 = time.perf_counter()
+        pipe.fit(X_tr, y_tr)
+        fit_t = time.perf_counter() - t0
+        t1 = time.perf_counter()
+        pred = pipe.predict(X_te)
+        pred_t = time.perf_counter() - t1
+
+        rmse = float(np.sqrt(mean_squared_error(y_te, pred)))
+        mae = float(mean_absolute_error(y_te, pred))
+        r2 = float(r2_score(y_te, pred)) if len(y_te) else float('nan')
+        try:
+            rho, _ = spearmanr(y_te, pred)
+            spearman = float(rho)
+        except Exception:
+            spearman = float('nan')
+        # Baseline: predict train mean
+        baseline = float(np.mean(y_tr)) if len(y_tr) else 0.0
+        rmse_base = float(np.sqrt(mean_squared_error(y_te, np.full_like(y_te, baseline)))) if len(y_te) else float('nan')
+        skill = float(1.0 - (rmse / rmse_base)) if (rmse_base and np.isfinite(rmse_base) and rmse_base > 0) else float('nan')
+
+        metrics = {
+            "rmse": rmse,
+            "mae": mae,
+            "r2": r2,
+            "spearman": spearman,
+            "baseline_rmse": rmse_base,
+            "skill": skill,
+            "n_train": int(len(y_tr)),
+            "n_test": int(len(y_te)),
+            "fit_time_sec": float(fit_t),
+            "predict_time_sec": float(pred_t),
+        }
+        return pipe, metrics
+    except Exception:
+        return None, {"rmse": float('nan'), "r2": float('nan')}
+
+
+@registry.register_model('tf_mlp_regressor')
+def tf_mlp_regressor(
+    y: pd.Series,
+    features: dict[str, pd.Series],
+    df: pd.DataFrame,
+    selection: dict[str, any],
+):
+    """TF MLP for regression with MSE loss and early stopping."""
+    try:
+        import os, time
+        _ensure_utf8_locale()
+        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+        import tensorflow as tf
+        from sklearn.impute import SimpleImputer
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+        from scipy.stats import spearmanr
+
+        X = pd.concat(features, axis=1)
+        combined = pd.concat([y, X], axis=1)
+        mask = combined.iloc[:, 0].notna()
+        y_clean = pd.to_numeric(combined.loc[mask, combined.columns[0]], errors='coerce')
+        X_clean = combined.loc[mask, combined.columns[1:]]
+        X_clean = X_clean.replace([np.inf, -np.inf], np.nan)
+        try:
+            X_clean = X_clean.infer_objects(copy=False)
+        except Exception:
+            pass
+        X_clean = X_clean.dropna(axis=1, how='all')
+        if len(X_clean) < 200:
+            return None, {"rmse": float('nan'), "r2": float('nan')}
+
+        split = _time_stratified_split(y_clean, min_train=200, min_test=200)
+        X_train_df = X_clean.iloc[:split]
+        X_test_df = X_clean.iloc[split:]
+        y_train = y_clean.iloc[:split]
+        y_test = y_clean.iloc[split:]
+
+        imp = SimpleImputer(strategy="median")
+        scl = StandardScaler()
+        X_train = scl.fit_transform(imp.fit_transform(X_train_df))
+        X_test = scl.transform(imp.transform(X_test_df))
+        y_train_np = y_train.to_numpy(dtype=np.float32)
+        y_test_np = y_test.to_numpy(dtype=np.float32)
+
+        n_in = X_train.shape[1]
+        inputs = tf.keras.Input(shape=(n_in,), dtype=tf.float32)
+        x = tf.keras.layers.Dense(128, use_bias=False)(inputs)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        x = tf.keras.layers.Dropout(0.2)(x)
+        x = tf.keras.layers.Dense(64, use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        x = tf.keras.layers.Dropout(0.2)(x)
+        x = tf.keras.layers.Dense(32, use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        x = tf.keras.layers.Dropout(0.1)(x)
+        outputs = tf.keras.layers.Dense(1, activation='linear')(x)
+        model = tf.keras.Model(inputs=inputs, outputs=outputs)
+        model.compile(optimizer=tf.keras.optimizers.Adam(1e-3), loss='mse')
+
+        callbacks = [
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True),
+            tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-5),
+        ]
+
+        t0 = time.perf_counter()
+        model.fit(
+            X_train, y_train_np,
+            epochs=50,
+            batch_size=1024,
+            validation_split=0.1,
+            callbacks=callbacks,
+            verbose=0,
+        )
+        fit_time = time.perf_counter() - t0
+        t1 = time.perf_counter()
+        pred = model.predict(X_test, batch_size=8192, verbose=0).reshape(-1)
+        pred_time = time.perf_counter() - t1
+
+        rmse = float(np.sqrt(((pred - y_test_np) ** 2).mean()))
+        mae = float(np.abs(pred - y_test_np).mean())
+        try:
+            r2 = float(r2_score(y_test_np, pred))
+        except Exception:
+            r2 = float('nan')
+        try:
+            rho, _ = spearmanr(y_test_np, pred)
+            spearman = float(rho)
+        except Exception:
+            spearman = float('nan')
+        baseline = float(np.mean(y_train_np)) if len(y_train_np) else 0.0
+        rmse_base = float(np.sqrt(((y_test_np - baseline) ** 2).mean())) if len(y_test_np) else float('nan')
+        skill = float(1.0 - (rmse / rmse_base)) if (rmse_base and np.isfinite(rmse_base) and rmse_base > 0) else float('nan')
+
+        metrics = {
+            "rmse": rmse,
+            "mae": mae,
+            "r2": r2,
+            "spearman": spearman,
+            "baseline_rmse": rmse_base,
+            "skill": skill,
+            "n_train": int(len(y_train_np)),
+            "n_test": int(len(y_test_np)),
+            "fit_time_sec": float(fit_time),
+            "predict_time_sec": float(pred_time),
+        }
+        return model, metrics
+    except Exception:
+        return None, {"rmse": float('nan'), "r2": float('nan')}

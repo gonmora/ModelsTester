@@ -348,7 +348,10 @@ def targets_historical(db_path: str = 'runs.db', min_runs: int = 5) -> pd.DataFr
             prt = met.get('pos_rate_test')
             if auc is not None:
                 try:
-                    d["auc"].append(float(auc))
+                    v = float(auc)
+                    import math as _math
+                    if v == v and _math.isfinite(v):  # drop NaN/inf
+                        d["auc"].append(v)
                 except Exception:
                     pass
             if acc is not None:

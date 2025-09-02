@@ -18,10 +18,26 @@ from typing import Optional
 
 import pandas as pd
 
-# Ensure db.db_to_df is importable; add Framework directory to sys.path
-framework_path = os.path.abspath(os.path.join(os.getcwd(), '..', 'Framework'))
-if framework_path not in sys.path:
-    sys.path.append(framework_path)
+# Ensure db.db_to_df is importable; try several plausible Framework locations
+MODULE_DIR = os.path.abspath(os.path.dirname(__file__))
+_fw_candidates = []
+try:
+    env_fw = os.environ.get("FRAMEWORK_DIR")
+    if env_fw:
+        _fw_candidates.append(os.path.abspath(env_fw))
+except Exception:
+    pass
+_fw_candidates += [
+    os.path.abspath(os.path.join(MODULE_DIR, '..', 'Framework')),
+    os.path.abspath(os.path.join(MODULE_DIR, '..', '..', 'Framework')),
+    os.path.abspath(os.path.join(os.getcwd(), '..', 'Framework')),
+]
+for _p in _fw_candidates:
+    try:
+        if os.path.isdir(_p) and _p not in sys.path:
+            sys.path.append(_p)
+    except Exception:
+        pass
 
 # Import database loader and gap filling functions
 try:
@@ -77,6 +93,10 @@ def save_dataframe(name: str, df: pd.DataFrame) -> None:
     """Save a pandas DataFrame to disk under the given name."""
     path = _df_path(name)
     _ensure_dir_exists(path)
+    try:
+        df.attrs['__df_name__'] = name
+    except Exception:
+        pass
     df.to_parquet(path)
 
 
@@ -87,10 +107,26 @@ def load_dataframe(name: str) -> pd.DataFrame:
     <symbol>_<period>_<start>_<end>, fetch the data from the database via
     `db_to_df`, fill gaps with `fill_ohlc_gaps_flat`, cache it, and return.
     """
+    # 0) Allow passing a direct parquet path
+    try:
+        if isinstance(name, str) and name.endswith('.parquet') and os.path.exists(name):
+            df = pd.read_parquet(name)
+            try:
+                df.attrs['__df_name__'] = os.path.splitext(os.path.basename(name))[0]
+            except Exception:
+                pass
+            return df
+    except Exception:
+        pass
     path = _df_path(name)
     # If cached file exists, load and return
     if os.path.exists(path):
-        return pd.read_parquet(path)
+        df = pd.read_parquet(path)
+        try:
+            df.attrs['__df_name__'] = name
+        except Exception:
+            pass
+        return df
     # Attempt to parse dataset name
     try:
         symbol, period, start, end = name.split("_", 3)
@@ -105,6 +141,10 @@ def load_dataframe(name: str) -> pd.DataFrame:
     df_filled = fill_ohlc_gaps_flat(df_raw, start, end, zero_volume=True, add_flags=True)
     # Cache and return
     save_dataframe(name, df_filled)
+    try:
+        df_filled.attrs['__df_name__'] = name
+    except Exception:
+        pass
     return df_filled
 
 
