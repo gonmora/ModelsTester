@@ -13,6 +13,7 @@ from __future__ import annotations
 import random
 import uuid
 from typing import List, Dict, Any, Optional
+import os
 
 import pandas as pd
 
@@ -90,7 +91,12 @@ def run_experiment(
     model_id = selection["model"]
     eval_cfg_id = selection["eval_cfg"]
 
-    # compute run key
+    # Default leakage guard: drop features that look like predictions of the same target
+    # Policy: only block if feature id starts with 'pred_<target>'
+    if os.environ.get("DISABLE_TGT_FEAT_LEAK", "").lower() not in ("1", "true", "yes"):
+        _leak_prefix = f"pred_{target_id}"
+        feature_ids = [fid for fid in feature_ids if not str(fid).startswith(_leak_prefix)]
+    # compute run key after guarding the feature list
     run_key = make_run_key(df_name, split_id, target_id, feature_ids, model_id, eval_cfg_id, seed)
 
     # check for duplicate
@@ -186,6 +192,12 @@ def run_experiment_with_selection(
     model_id = selection["model"]
     eval_cfg_id = selection.get("eval_cfg", "default")
 
+    # Default leakage guard: drop features that look like predictions of the same target
+    # Policy: only block if feature id starts with 'pred_<target>'
+    if os.environ.get("DISABLE_TGT_FEAT_LEAK", "").lower() not in ("1", "true", "yes"):
+        _leak_prefix = f"pred_{target_id}"
+        feature_ids = [fid for fid in feature_ids if not str(fid).startswith(_leak_prefix)]
+    # compute run key after guarding the feature list
     run_key = make_run_key(df_name, split_id, target_id, feature_ids, model_id, eval_cfg_id, seed)
     if history.exists(con, run_key):
         try:

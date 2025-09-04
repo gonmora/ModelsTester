@@ -12,6 +12,45 @@ import numpy as np
 
 from .registry import registry
 
+# --- Utilities for additional bases and horizons ---
+_WINDOW_LABELS_TO_BARS = {
+    # Assuming 5-minute bars
+    "4h": 4 * 60 // 5,    # 48
+    "6h": 6 * 60 // 5,    # 72
+    "12h": 12 * 60 // 5,  # 144
+    "2d": 2 * 24 * 60 // 5,   # 576
+    "2w": 2 * 7 * 24 * 60 // 5,  # 4032
+}
+
+
+def _hlc3(df: pd.DataFrame) -> pd.Series:
+    h = pd.to_numeric(df.get("high"), errors="coerce")
+    l = pd.to_numeric(df.get("low"), errors="coerce")
+    c = pd.to_numeric(df.get("close"), errors="coerce")
+    return (h + l + c) / 3.0
+
+
+def _vwap_series(df: pd.DataFrame) -> pd.Series:
+    """Attempt to use registered pandas_ta VWAP; fallback to cumulative VWAP."""
+    try:
+        # Prefer pre-registered pandas_ta VWAP feature if available
+        if "ta_volume_vwap" in registry.features:
+            s = registry.features["ta_volume_vwap"](df)
+            if isinstance(s, pd.Series) and s.notna().any():
+                return pd.to_numeric(s, errors="coerce")
+    except Exception:
+        pass
+
+    # Fallback: cumulative VWAP using typical price (HLC3)
+    if "volume" not in df.columns:
+        # Without volume, return HLC3 as a harmless fallback
+        return _hlc3(df)
+    tp = _hlc3(df)
+    vol = pd.to_numeric(df.get("volume"), errors="coerce").fillna(0.0)
+    num = (tp * vol).cumsum()
+    den = vol.cumsum().replace(0.0, pd.NA)
+    return (num / den).fillna(method="ffill").fillna(method="bfill")
+
 # --- Custom distance-to-rolling-maximum features ---
 def _dist_to_rolling_max(close: pd.Series, window: int, as_pct: bool = True) -> pd.Series:
     """Distance from current close to the rolling max over the last `window` bars.
@@ -141,6 +180,92 @@ def bars_since_min_1w(df: pd.DataFrame) -> pd.Series:
     x = _bars_since_rolling_extreme(df['close'], window=2016, which='min')
     x.name = 'bars_since_min_1w'
     return x
+
+
+# --- Auto-register additional distance-to-extreme features ---
+def _register_extreme_distance_variants() -> int:
+    added = 0
+
+    # 1) Close-based: new horizons (avoid duplicates if already exist)
+    for lbl, w in _WINDOW_LABELS_TO_BARS.items():
+        for kind in ("max", "min"):
+            for mode in ("pct", "abs"):
+                name = f"dist_to_{kind}_{lbl}_{mode}"
+                if name in registry.features:
+                    continue
+
+                @registry.register_feature(name)
+                def _f(df: pd.DataFrame, W=w, K=kind, MODE=mode, NAME=name) -> pd.Series:
+                    s = pd.to_numeric(df["close"], errors="coerce")
+                    if K == "max":
+                        out = _dist_to_rolling_max(s, window=int(W), as_pct=(MODE == "pct"))
+                    else:
+                        out = _dist_to_rolling_min(s, window=int(W), as_pct=(MODE == "pct"))
+                    out.name = NAME
+                    return out
+                added += 1
+
+    # 2) HLC3-based variants (prefixed with base)
+    for lbl, w in _WINDOW_LABELS_TO_BARS.items():
+        for kind in ("max", "min"):
+            for mode in ("pct", "abs"):
+                name = f"hlc3_dist_to_{kind}_{lbl}_{mode}"
+                if name in registry.features:
+                    continue
+
+                @registry.register_feature(name)
+                def _f(df: pd.DataFrame, W=w, K=kind, MODE=mode, NAME=name) -> pd.Series:
+                    s = _hlc3(df)
+                    if K == "max":
+                        out = _dist_to_rolling_max(s, window=int(W), as_pct=(MODE == "pct"))
+                    else:
+                        out = _dist_to_rolling_min(s, window=int(W), as_pct=(MODE == "pct"))
+                    out.name = NAME
+                    return out
+                added += 1
+
+    # 3) VWAP-based variants (prefixed with base)
+    for lbl, w in _WINDOW_LABELS_TO_BARS.items():
+        for kind in ("max", "min"):
+            for mode in ("pct", "abs"):
+                name = f"vwap_dist_to_{kind}_{lbl}_{mode}"
+                if name in registry.features:
+                    continue
+
+                @registry.register_feature(name)
+                def _f(df: pd.DataFrame, W=w, K=kind, MODE=mode, NAME=name) -> pd.Series:
+                    s = _vwap_series(df)
+                    if K == "max":
+                        out = _dist_to_rolling_max(s, window=int(W), as_pct=(MODE == "pct"))
+                    else:
+                        out = _dist_to_rolling_min(s, window=int(W), as_pct=(MODE == "pct"))
+                    out.name = NAME
+                    return out
+                added += 1
+
+    # 4) Bars-since-extreme for new horizons (close-based)
+    for lbl, w in _WINDOW_LABELS_TO_BARS.items():
+        for kind in ("max", "min"):
+            name = f"bars_since_{kind}_{lbl}"
+            if name in registry.features:
+                continue
+
+            @registry.register_feature(name)
+            def _f(df: pd.DataFrame, W=w, K=kind, NAME=name) -> pd.Series:
+                s = pd.to_numeric(df["close"], errors="coerce")
+                out = _bars_since_rolling_extreme(s, window=int(W), which=str(K))
+                out.name = NAME
+                return out
+            added += 1
+
+    return added
+
+
+# Try to register on import without failing
+try:
+    _register_extreme_distance_variants()
+except Exception:
+    pass
 
 
 # --- Daily volume sum features (calendar-based) ---

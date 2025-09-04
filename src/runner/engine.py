@@ -17,6 +17,11 @@ import random
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..registry import registry
+# Ensure saved prediction features (OOF) are registered if present
+try:  # side-effect import (prediction features)
+    from .. import prediction_features  # noqa: F401
+except Exception:
+    pass
 # Ensure basic components (targets/models) and TA features are loaded on import
 try:  # side-effect import
     from .. import basic_components  # noqa: F401
@@ -215,10 +220,18 @@ def build_selection(
     except Exception:
         pass
 
-    # Features universe: exclude disabled and zero-weight
+    # Features universe: exclude disabled, zero-weight, and potential leakage from target
+    # Default leakage guard: block features that look like predictions of the selected target
+    # Policy: only block if feature id starts with 'pred_<target>' (e.g., pred_pv_phase_up__lag7)
+    leak_guard = os.environ.get("DISABLE_TGT_FEAT_LEAK", "").lower() not in ("1", "true", "yes")
+    _leak_prefix = f"pred_{target_id}"
     all_features = [
         f for f in registry.features.keys()
-        if f not in ws.disabled_features and ws.weight_for_feature(f) > 0.0
+        if (
+            f not in ws.disabled_features
+            and ws.weight_for_feature(f) > 0.0
+            and (not leak_guard or (not str(f).startswith(_leak_prefix)))
+        )
     ]
     if not all_features:
         raise RuntimeError("No available features to select from")

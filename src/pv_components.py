@@ -232,6 +232,19 @@ def pv_next_extreme_is_peak(df: pd.DataFrame) -> pd.Series:
     return pd.Series(y, index=out.index, name='pv_next_extreme_is_peak')
 
 
+@registry.register_target('pv_next_extreme_is_valley')
+def pv_next_extreme_is_valley(df: pd.DataFrame) -> pd.Series:
+    """1 si el próximo extremo confirmado es un valley; 0 en caso contrario.
+
+    Es el complemento de pv_next_extreme_is_peak cuando alguno de los dos está definido.
+    """
+    out = _pv(df)
+    tnp = pd.to_numeric(out['to_next_peak'], errors='coerce').to_numpy()
+    tnv = pd.to_numeric(out['to_next_valley'], errors='coerce').to_numpy()
+    y = ((~np.isnan(tnv)) & (np.isnan(tnp) | (tnv < tnp))).astype(int)
+    return pd.Series(y, index=out.index, name='pv_next_extreme_is_valley')
+
+
 # ---------------------------
 # Additional targets from retrospective signals
 # (allowed as targets; we disabled them as features by default)
@@ -279,6 +292,20 @@ def pv_phase_up(df: pd.DataFrame) -> pd.Series:
     b = _to_fraction(out['last_down'])
     y = (a >= b).astype(int)
     y.name = 'pv_phase_up'
+    return y
+
+
+@registry.register_target('pv_phase_down')
+def pv_phase_down(df: pd.DataFrame) -> pd.Series:
+    """1 si last_down >= last_up; 0 en caso contrario.
+
+    Complemento binario de pv_phase_up.
+    """
+    out = _pv(df)
+    a = _to_fraction(out['last_up'])
+    b = _to_fraction(out['last_down'])
+    y = (b >= a).astype(int)
+    y.name = 'pv_phase_down'
     return y
 
 

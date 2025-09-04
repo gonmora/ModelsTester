@@ -62,11 +62,7 @@ try:
         runs_overview,
         features_table,
     )
-    # pairs_historical may not exist on older versions
-    try:
-        from src.reporting import pairs_historical
-    except Exception:
-        pairs_historical = None
+    # pairs_historical removed from this GUI (Target x Model tab removed)
 except Exception as e:
     # Fall back to showing a message and exiting gracefully
     try:
@@ -86,6 +82,7 @@ class MonitorGUI(tk.Tk):
         self.refresh_ms = 2000
         self.top_k = 10
         self.feature_filter_var = tk.StringVar(value="")
+        self.target_filter_var = tk.StringVar(value="")
 
         # Load last-used preferences before building controls so defaults honor them
         try:
@@ -137,6 +134,7 @@ class MonitorGUI(tk.Tk):
             "refresh_secs": self.refresh_var.get() if hasattr(self, "refresh_var") else None,
             "top_k": self.topk_var.get() if hasattr(self, "topk_var") else None,
             "feature_filter": self.feature_filter_var.get() if hasattr(self, "feature_filter_var") else None,
+            "target_filter": self.target_filter_var.get() if hasattr(self, "target_filter_var") else None,
             "normalize": bool(self.normalize_var.get()) if hasattr(self, "normalize_var") else False,
             "geometry": geo,
         }
@@ -172,6 +170,12 @@ class MonitorGUI(tk.Tk):
             val = prefs.get("feature_filter")
             if val is not None:
                 self.feature_filter_var.set(str(val))
+        except Exception:
+            pass
+        try:
+            val = prefs.get("target_filter")
+            if val is not None:
+                self.target_filter_var.set(str(val))
         except Exception:
             pass
         try:
@@ -236,8 +240,7 @@ class MonitorGUI(tk.Tk):
         # Third row: action buttons and filters
         btns = ttk.Frame(frm)
         btns.grid(row=2, column=0, columnspan=3, sticky=tk.W, padx=(4,0), pady=(8,0))
-        ttk.Button(btns, text="Start", command=self.start).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btns, text="Stop", command=self.stop).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btns, text="Refresh", command=self.refresh_now).pack(side=tk.LEFT, padx=4)
         ttk.Button(btns, text="Export Excel", command=self.export_active_to_excel).pack(side=tk.LEFT, padx=4)
 
         # Feature filter textbox (applies to Top Features tab)
@@ -246,7 +249,13 @@ class MonitorGUI(tk.Tk):
         self.feature_filter_var.set(_f_default)
         ttk.Entry(frm, textvariable=self.feature_filter_var, width=20).grid(row=2, column=4, sticky=tk.W, pady=(8,0))
 
-        # Normalize toggle for Top Predictors
+        # Target filter textbox (applies to Targets tab)
+        ttk.Label(frm, text="Filtro targets:").grid(row=3, column=3, sticky=tk.W, padx=(12,4), pady=(8,0))
+        _t_default = str((getattr(self, "_prefs_cache", {}) or {}).get("target_filter") or "")
+        self.target_filter_var.set(_t_default)
+        ttk.Entry(frm, textvariable=self.target_filter_var, width=20).grid(row=3, column=4, sticky=tk.W, pady=(8,0))
+
+        # Normalize toggle (affects Top (Unified) and Top by Target)
         _norm_default = bool((getattr(self, "_prefs_cache", {}) or {}).get("normalize", False))
         self.normalize_var = tk.BooleanVar(value=_norm_default)
         ttk.Checkbutton(frm, text="Normalize (sAUC·sAP)", variable=self.normalize_var).grid(row=2, column=5, sticky=tk.W, padx=(12,0), pady=(8,0))
@@ -256,25 +265,6 @@ class MonitorGUI(tk.Tk):
         self.nb.pack(fill=tk.BOTH, expand=True)
         # Map of frame widget id -> tree to find active grid
         self._tree_by_frame_id: dict[str, ttk.Treeview] = {}
-
-        # New first tab: Top Predictors (best runs by performance)
-        self.tab_predictors = self._add_table_tab(
-            "Top Predictors",
-            cols=[
-                "run_id",
-                "target",
-                "model",
-                "accuracy",
-                "ap",
-                "auc",
-                "ap_lift",
-                "pos_rate_test",
-                "n_test",
-                "n_features",
-                "performance",
-                "features",
-            ],
-        )
 
         # New: Top Unified (mixed tasks, unified score)
         self.tab_unified = self._add_table_tab(
@@ -299,6 +289,7 @@ class MonitorGUI(tk.Tk):
                 "n_test",
                 "n_features",
                 "performance",
+                "score",
                 "features",
             ],
         )
@@ -308,7 +299,6 @@ class MonitorGUI(tk.Tk):
         self.tab_targets = self._add_table_tab("Targets", cols=["target","weight","n","mean","best","last","rank"]) 
         self.tab_tq = self._add_table_tab("Target Quality", cols=["target","runs","auc_median","auc_q025","auc_q975","auc_iqr","acc_median","ap_median","pos_rate_test_median"]) 
         self.tab_mq = self._add_table_tab("Model Quality & Timing", cols=["model","runs","auc_median","ap_median","fit_time_median_sec","predict_time_median_sec"]) 
-        self.tab_pairs = self._add_table_tab("Target x Model", cols=["target","model","runs","auc_median","ap_median"]) 
         self.tab_runs = self._add_table_tab("Recent Runs", cols=["run_id","status","model","metrics"]) 
 
         # Bind double-click to toggle weight 0/1 for features and targets only
@@ -434,43 +424,51 @@ class MonitorGUI(tk.Tk):
             pass
         return fallback if os.path.isdir(fallback) else os.getcwd()
 
-    def start(self) -> None:
-        try:
-            self.refresh_ms = int(float(self.refresh_var.get()) * 1000)
-        except Exception:
-            self.refresh_ms = 2000
+    def refresh_now(self) -> None:
+        """Fetch and render all tables once (manual refresh)."""
+        # Sync auxiliary params
         try:
             self.top_k = int(self.topk_var.get())
         except Exception:
             self.top_k = 10
-        # Apply weights env
+        # Apply weights env for reporting
         os.environ["WEIGHTS_JSON"] = self.weights_var.get().strip()
-        self.running = True
-        self.status_var.set("Running")
-        self._schedule_refresh()
-
-    def stop(self) -> None:
-        self.running = False
-        self.status_var.set("Stopped")
-
-    def _schedule_refresh(self) -> None:
-        if not self.running:
-            return
-        self.after(self.refresh_ms, self._refresh)
+        self.status_var.set("Refreshing…")
+        try:
+            self._refresh_core()
+            self.status_var.set("Idle")
+        except Exception:
+            self.status_var.set("Idle (error)")
 
     def _refresh(self) -> None:
-        if not self.running:
-            return
+        """Backwards-compatible: no-op loop scheduler removed. Use refresh_now()."""
+        # Intentionally do not reschedule to avoid online loop
+        self._refresh_core()
+
+    def _refresh_core(self) -> None:
         db = self.db_var.get().strip()
-        # Top Predictors (best runs by ap*auc with helpful ties)
-        try:
-            tp_df = self._fetch_top_predictors(db_path=db, limit=self.top_k, normalize=self.normalize_var.get())
-            self._fill_tree(self.tab_predictors, tp_df)
-        except Exception as e:
-            self._set_tree_error(self.tab_predictors, f"Error: {e}")
+        # (Top Predictors tab removed)
         # Top unified (score in [0,1])
         try:
-            tu_df = self._fetch_top_unified(db_path=db, limit=self.top_k)
+            tu_df = self._fetch_top_unified(db_path=db, limit=None, normalize=self.normalize_var.get())
+            # Apply target filter to Top (Unified)
+            try:
+                tfilt = self.target_filter_var.get().strip()
+            except Exception:
+                tfilt = ""
+            if tfilt and len(tu_df) > 0 and 'target' in tu_df.columns:
+                try:
+                    mask = tu_df.get('target').astype(str).str.contains(tfilt, case=False, na=False)
+                    tu_df = tu_df[mask]
+                except Exception:
+                    pass
+            # Apply Top-K after filtering
+            try:
+                k = int(self.top_k)
+                if k and k > 0:
+                    tu_df = tu_df.head(k)
+            except Exception:
+                pass
             self._fill_tree(self.tab_unified, tu_df)
         except Exception as e:
             self._set_tree_error(self.tab_unified, f"Error: {e}")
@@ -512,13 +510,26 @@ class MonitorGUI(tk.Tk):
                     tt_df = targets_table(ws)
             except Exception:
                 tt_df = pd.DataFrame()
+            # Apply target name filter if provided
+            try:
+                tfilt = self.target_filter_var.get().strip()
+            except Exception:
+                tfilt = ""
+            if tfilt:
+                try:
+                    if len(tt_df) > 0 and 'target' in tt_df.columns:
+                        mask = tt_df.get('target').astype(str).str.contains(tfilt, case=False, na=False)
+                        tt_df = tt_df[mask]
+                except Exception:
+                    pass
             self._fill_tree(self.tab_targets, tt_df)
         except Exception as e:
             self._set_tree_error(self.tab_features, f"Error: {e}")
             self._set_tree_error(self.tab_targets, f"Error: {e}")
         # Top by Target (grouped)
         try:
-            tbt_df = self._fetch_top_by_target(db_path=db, per=min(3, self.top_k), normalize=self.normalize_var.get())
+            # Best single model per target, including regression via unified score
+            tbt_df = self._fetch_top_by_target(db_path=db, per=1, normalize=self.normalize_var.get())
             self._fill_tree(self.tab_top_by_target, tbt_df)
         except Exception as e:
             self._set_tree_error(self.tab_top_by_target, f"Error: {e}")
@@ -531,13 +542,7 @@ class MonitorGUI(tk.Tk):
             self._fill_tree(self.tab_mq, models_historical(db_path=db, min_runs=3))
         except Exception as e:
             self._set_tree_error(self.tab_mq, f"Error: {e}")
-        if pairs_historical is not None:
-            try:
-                self._fill_tree(self.tab_pairs, pairs_historical(db_path=db, min_runs=3))
-            except Exception as e:
-                self._set_tree_error(self.tab_pairs, f"Error: {e}")
-        else:
-            self._set_tree_error(self.tab_pairs, "pairs_historical() not available")
+        # Removed Target x Model tab
         # Recent runs
         try:
             ro = runs_overview(db_path=db, last=10)
@@ -553,101 +558,11 @@ class MonitorGUI(tk.Tk):
             self._fill_tree(self.tab_runs, df)
         except Exception as e:
             self._set_tree_error(self.tab_runs, f"Error: {e}")
-        # Reschedule
-        self._schedule_refresh()
+        # No reschedule (manual refresh only)
 
-    def _fetch_top_predictors(self, db_path: str, limit: int = 20, normalize: bool = False) -> pd.DataFrame:
-        """Return a DataFrame of top runs ranked by performance (ap*auc).
+    # Removed: _fetch_top_predictors (Top Predictors tab was removed)
 
-        Improves on the basic SQL by:
-        - filtering to SUCCESS runs with numeric AUC/AP
-        - adding n_test and pos_rate_test context
-        - computing AP lift = ap / pos_rate_test
-        - sorting with tie-breakers (auc, ap_lift, n_test)
-        - optional normalized score using sAUC·sAP (baseline-invariant)
-        The implementation parses JSON in Python to avoid sqlite JSON errors.
-        """
-        import sqlite3, json, math
-        rows = []
-        con = sqlite3.connect(db_path)
-        try:
-            cur = con.execute(
-                "SELECT run_id, selection_json, metrics_json FROM runs WHERE status='SUCCESS' AND metrics_json IS NOT NULL"
-            )
-            for rid, sj, mj in cur.fetchall():
-                try:
-                    sel = json.loads(sj) if sj else None
-                    met = json.loads(mj) if mj else None
-                except Exception:
-                    continue
-                if not sel or not met:
-                    continue
-                try:
-                    auc = float(met.get('auc'))
-                    ap = float(met.get('ap'))
-                except Exception:
-                    continue
-                if not (isinstance(auc, (int, float)) and isinstance(ap, (int, float))):
-                    continue
-                if (isinstance(auc, float) and math.isnan(auc)) or (isinstance(ap, float) and math.isnan(ap)):
-                    continue
-                acc = met.get('accuracy') if met.get('accuracy') is not None else met.get('acc')
-                prt = met.get('pos_rate_test')
-                n_test = met.get('n_test')
-                try:
-                    acc = float(acc) if acc is not None else None
-                except Exception:
-                    acc = None
-                try:
-                    prt = float(prt) if prt is not None else None
-                except Exception:
-                    prt = None
-                try:
-                    n_test = int(n_test) if n_test is not None else None
-                except Exception:
-                    n_test = None
-                ap_lift = (ap / prt) if (prt and prt > 0) else float('nan')
-                # Default performance: ap_lift * auc (less sensitive a la tasa base)
-                performance = float(ap_lift) * float(auc) if (ap_lift == ap_lift) else float('nan')
-                # Normalized components (optional): sAUC in [0,1]; sAP in [0,1] relative to baseline
-                sAUC = max(0.0, min(1.0, (auc - 0.5) / 0.5)) if isinstance(auc, (int, float)) else float('nan')
-                if prt is not None and prt < 1.0:
-                    try:
-                        sAP = (ap - prt) / (1.0 - prt)
-                    except Exception:
-                        sAP = float('nan')
-                else:
-                    sAP = float('nan')
-                performance_norm = float(sAUC) * float(sAP) if (sAUC == sAUC and sAP == sAP) else performance
-                perf_value = performance_norm if normalize else performance
-                rows.append({
-                    'run_id': rid,
-                    'target': sel.get('target'),
-                    'model': sel.get('model'),
-                    'features': sel.get('features'),
-                    'accuracy': acc,
-                    'ap': ap,
-                    'auc': auc,
-                    'ap_lift': ap_lift,
-                    'pos_rate_test': prt,
-                    'n_test': n_test,
-                    'n_features': (len(sel.get('features')) if isinstance(sel.get('features'), list) else None),
-                    'performance': perf_value,
-                })
-        finally:
-            try:
-                con.close()
-            except Exception:
-                pass
-        df = pd.DataFrame(rows,
-                          columns=['run_id','target','model','accuracy','ap','auc','ap_lift','pos_rate_test','n_test','n_features','performance','features'])
-        if len(df) == 0:
-            return df
-        # Sort by performance -> auc -> ap_lift -> n_test
-        df = df.sort_values(['performance','auc','ap_lift','n_test'], ascending=[False, False, False, False])
-        return df.head(limit)
-
-    def _fetch_top_unified(self, db_path: str, limit: int = 20) -> pd.DataFrame:
+    def _fetch_top_unified(self, db_path: str, limit: int | None = None, normalize: bool = False) -> pd.DataFrame:
         """Top runs by unified score.
 
         Score mapping:
@@ -670,13 +585,33 @@ class MonitorGUI(tk.Tk):
                 if not sel or not met:
                     continue
                 auc = met.get('auc'); ap = met.get('ap')
+                prt = met.get('pos_rate_test')
                 skill = met.get('skill'); r2 = met.get('r2') or met.get('r2_score'); sp = met.get('spearman') or met.get('corr_spearman')
                 n_test = met.get('n_test')
                 # Compute unified score
                 score = None
                 try:
                     if isinstance(auc, (int, float)) and not (isinstance(auc, float) and math.isnan(auc)):
-                        score = max(0.0, min(1.0, 2.0 * (float(auc) - 0.5)))
+                        # Classification
+                        if normalize:
+                            # sAUC in [0,1]
+                            sAUC = max(0.0, min(1.0, (float(auc) - 0.5) / 0.5))
+                            # sAP relative to baseline in [0,1]
+                            try:
+                                pr = float(prt) if prt is not None else None
+                                apv = float(ap) if ap is not None else None
+                            except Exception:
+                                pr = None; apv = None
+                            if pr is not None and apv is not None and pr < 1.0:
+                                try:
+                                    sAP = (apv - pr) / (1.0 - pr)
+                                except Exception:
+                                    sAP = float('nan')
+                            else:
+                                sAP = float('nan')
+                            score = float(sAUC) * float(sAP) if (sAUC == sAUC and sAP == sAP) else max(0.0, min(1.0, 2.0 * (float(auc) - 0.5)))
+                        else:
+                            score = max(0.0, min(1.0, 2.0 * (float(auc) - 0.5)))
                         task = 'clf'
                     elif isinstance(skill, (int, float)) and not (isinstance(skill, float) and math.isnan(skill)):
                         score = max(0.0, min(1.0, float(skill)))
@@ -717,30 +652,51 @@ class MonitorGUI(tk.Tk):
         df = pd.DataFrame(rows, columns=['run_id','target','model','score','task','auc','ap','skill','r2','spearman','n_test','features'])
         if len(df) == 0:
             return df
-        df = df.sort_values(['score','n_test'], ascending=[False, False]).head(limit)
+        df = df.sort_values(['score','n_test'], ascending=[False, False])
+        if isinstance(limit, int):
+            return df.head(limit)
         return df
 
-    def _fetch_top_by_target(self, db_path: str, per: int = 3, normalize: bool = False) -> pd.DataFrame:
-        """Return per-target top runs using same performance metric as Top Predictors."""
-        base = self._fetch_top_predictors(db_path=db_path, limit=50_000, normalize=normalize)
+    def _fetch_top_by_target(self, db_path: str, per: int = 1, normalize: bool = False) -> pd.DataFrame:
+        """Return per-target top runs (single best by default) including regression via unified score.
+
+        Uses _fetch_top_unified() to rank both classification and regression by a unified score.
+        Maps columns to the existing Top-by-Target table; fields not applicable remain None/NaN.
+        """
+        base = self._fetch_top_unified(db_path=db_path, limit=50_000, normalize=normalize)
         if len(base) == 0:
             return base
-        # Group by target and take top 'per'
+        # Sort within target by unified score then n_test
+        base2 = base.sort_values(['target','score','n_test'], ascending=[True, False, False])
         out = []
-        # Ensure stable deterministic order by performance within each group
-        gsorted = base.sort_values(['target','performance','auc','ap_lift','n_test'], ascending=[True, False, False, False, False])
-        for tgt, g in gsorted.groupby('target', sort=False):
-            out.append(g.head(per))
-        df = pd.concat(out, axis=0, ignore_index=True)
-        # Reorder blocks by best performance per target
+        for tgt, g in base2.groupby('target', sort=False):
+            out.append(g.head(max(1, per)))
+        dfu = pd.concat(out, axis=0, ignore_index=True)
+        # Prepare output columns expected by the tab
+        rows = []
+        for _, r in dfu.iterrows():
+            feats = r.get('features')
+            rows.append({
+                'target': r.get('target'),
+                'run_id': r.get('run_id'),
+                'model': r.get('model'),
+                'accuracy': None,  # not available from unified summary
+                'ap': r.get('ap'),
+                'auc': r.get('auc'),
+                'ap_lift': None,
+                'pos_rate_test': None,
+                'n_test': r.get('n_test'),
+                'n_features': (len(feats) if isinstance(feats, list) else None),
+                'performance': r.get('score'),
+                'score': r.get('score'),
+                'features': feats,
+            })
+        df = pd.DataFrame(rows, columns=['target','run_id','model','accuracy','ap','auc','ap_lift','pos_rate_test','n_test','n_features','performance','score','features'])
+        # Order blocks by performance
         best_by_target = df.groupby('target')['performance'].max().sort_values(ascending=False)
         df['__rank'] = df['target'].map({t:i for i,t in enumerate(best_by_target.index)})
         df = df.sort_values(['__rank','performance'], ascending=[True, False]).drop(columns='__rank')
-        # Reorder columns to match tab
-        cols = [
-            'target','run_id','model','accuracy','ap','auc','ap_lift','pos_rate_test','n_test','n_features','performance','features'
-        ]
-        return df[cols]
+        return df
 
     def _set_tree_error(self, tree: ttk.Treeview, msg: str) -> None:
         self._fill_tree(tree, pd.DataFrame([{tree["columns"][0]: msg}]))
@@ -908,6 +864,20 @@ class ValidationWindow(tk.Toplevel):
         self.db_path = db_path
         self.run_id = run_id
         self.default_df = default_df
+        # Cache for selection/metrics/artifacts
+        self._sel_cache = None
+        self._met_cache = None
+        self._art_cache = None
+        try:
+            info = self._load_run_row(self.db_path, self.run_id)
+            self._sel_cache = info.get('selection')
+            self._met_cache = info.get('metrics')
+            self._art_cache = info.get('artifacts')
+            tgt = (self._sel_cache or {}).get('target')
+            if tgt:
+                self.title(f"Validate run: {run_id} — {tgt}")
+        except Exception:
+            pass
 
         # Header with inputs
         frm = ttk.Frame(self)
@@ -927,6 +897,14 @@ class ValidationWindow(tk.Toplevel):
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill=tk.BOTH, expand=True)
         # Tabs
+        self.tab_info = ttk.Frame(self.nb)
+        self.nb.add(self.tab_info, text="Info")
+        self._build_info_tab(self.tab_info)
+        # Populate info now (from DB caches)
+        try:
+            self._fill_info_tab()
+        except Exception:
+            pass
         self.tab_metrics = ttk.Frame(self.nb)
         self.nb.add(self.tab_metrics, text="Metrics")
         self._build_metrics_tab(self.tab_metrics)
@@ -957,12 +935,115 @@ class ValidationWindow(tk.Toplevel):
         )
         ttk.Label(self, text=legend).pack(side=tk.BOTTOM, anchor=tk.W, padx=8, pady=6)
 
-        # Auto-run initial validation
-        self._run_validate_async()
+        # Do not auto-run validation; user triggers via Validate button
 
     def _build_metrics_tab(self, parent: ttk.Frame) -> None:
         self.txt_metrics = tk.Text(parent, height=24)
         self.txt_metrics.pack(fill=tk.BOTH, expand=True)
+
+    def _build_info_tab(self, parent: ttk.Frame) -> None:
+        # Summary labels
+        frm = ttk.Frame(parent)
+        frm.pack(side=tk.TOP, fill=tk.X, padx=8, pady=6)
+        self.info_target_var = tk.StringVar(value="target: ?")
+        self.info_model_var = tk.StringVar(value="model: ?")
+        self.info_metrics_var = tk.StringVar(value="metrics: (from DB)")
+        ttk.Label(frm, textvariable=self.info_target_var).grid(row=0, column=0, sticky=tk.W, padx=(0,12))
+        ttk.Label(frm, textvariable=self.info_model_var).grid(row=0, column=1, sticky=tk.W, padx=(0,12))
+        ttk.Label(frm, textvariable=self.info_metrics_var).grid(row=0, column=2, sticky=tk.W)
+        # Features affinity grid
+        cols = ["feature","pearson","spearman","mi","dcor","n_eff"]
+        self.info_tree = ttk.Treeview(parent, columns=cols, show="headings")
+        for c in cols:
+            self.info_tree.heading(c, text=c)
+            self.info_tree.column(c, anchor=tk.W, width=120)
+        vsb = ttk.Scrollbar(parent, orient="vertical", command=self.info_tree.yview)
+        self.info_tree.configure(yscrollcommand=vsb.set)
+        self.info_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def _fill_info_tab(self) -> None:
+        # Set summary labels
+        sel = self._sel_cache or {}
+        met = self._met_cache or {}
+        tgt = sel.get('target') or 'N/A'
+        mdl = sel.get('model') or 'N/A'
+        self.info_target_var.set(f"target: {tgt}")
+        self.info_model_var.set(f"model: {mdl}")
+        # Short metrics line if available
+        if isinstance(met, dict) and met:
+            parts = []
+            for k in ("auc","ap","accuracy","skill","r2","spearman"):
+                v = met.get(k)
+                if v is None:
+                    continue
+                try:
+                    parts.append(f"{k}={float(v):.3f}")
+                except Exception:
+                    parts.append(f"{k}={v}")
+            self.info_metrics_var.set("metrics: " + (", ".join(parts) if parts else "(none)"))
+        else:
+            self.info_metrics_var.set("metrics: (none)")
+        # Fill affinities
+        for it in list(self.info_tree.get_children()):
+            self.info_tree.delete(it)
+        aff = ((self._art_cache or {}).get('affinity')) if isinstance(self._art_cache, dict) else None
+        feats = sel.get('features') or []
+        def _fmt(x):
+            try:
+                xv = float(x)
+                if xv == xv:  # not NaN
+                    return f"{xv:.4f}"
+                return "nan"
+            except Exception:
+                return ""
+        if isinstance(aff, dict) and feats:
+            for fid in feats:
+                d = aff.get(fid) or {}
+                row = [
+                    fid,
+                    _fmt(d.get('pearson')),
+                    _fmt(d.get('spearman')),
+                    _fmt(d.get('mi')),
+                    _fmt(d.get('dcor')),
+                    _fmt(d.get('n_eff')),
+                ]
+                self.info_tree.insert("", tk.END, values=row)
+        else:
+            # still insert feature names with blanks if no affinities
+            for fid in feats:
+                self.info_tree.insert("", tk.END, values=[fid, "", "", "", "", ""]) 
+
+    def _load_run_row(self, db_path: str, run_id: str) -> dict:
+        import sqlite3, json
+        try:
+            con = sqlite3.connect(db_path)
+            try:
+                cur = con.execute(
+                    "SELECT selection_json, metrics_json, artifacts_json FROM runs WHERE run_id=? LIMIT 1",
+                    (run_id,),
+                )
+                row = cur.fetchone()
+            finally:
+                con.close()
+            if not row:
+                return {}
+            sj, mj, aj = row
+            try:
+                sel = json.loads(sj) if sj else None
+            except Exception:
+                sel = None
+            try:
+                met = json.loads(mj) if mj else None
+            except Exception:
+                met = None
+            try:
+                art = json.loads(aj) if aj else None
+            except Exception:
+                art = None
+            return {"selection": sel, "metrics": met, "artifacts": art}
+        except Exception:
+            return {}
 
     def _build_other_df_tab(self, parent: ttk.Frame) -> None:
         frm = ttk.Frame(parent)
@@ -974,7 +1055,11 @@ class ValidationWindow(tk.Toplevel):
         ttk.Label(frm, text="GAP:").grid(row=0, column=3, sticky=tk.W, padx=(12,4))
         self.gap2_var = tk.StringVar(value="288")
         ttk.Entry(frm, textvariable=self.gap2_var, width=8).grid(row=0, column=4, sticky=tk.W)
-        ttk.Button(frm, text="Run", command=self._run_other_df_async).grid(row=0, column=5, sticky=tk.W, padx=(12,0))
+        ttk.Label(frm, text="Folds:").grid(row=0, column=5, sticky=tk.W, padx=(12,4))
+        self.oof_folds_var = tk.StringVar(value="4")
+        ttk.Entry(frm, textvariable=self.oof_folds_var, width=6).grid(row=0, column=6, sticky=tk.W)
+        ttk.Button(frm, text="Run", command=self._run_other_df_async).grid(row=0, column=7, sticky=tk.W, padx=(12,0))
+        ttk.Button(frm, text="Make OOF Feature", command=self._run_make_oof_async).grid(row=0, column=8, sticky=tk.W, padx=(8,0))
         self.txt_other = tk.Text(parent, height=22)
         self.txt_other.pack(fill=tk.BOTH, expand=True)
 
@@ -983,6 +1068,14 @@ class ValidationWindow(tk.Toplevel):
             path = filedialog.askopenfilename(title="Select parquet dataset", initialdir=os.getcwd(), filetypes=[("Parquet","*.parquet"), ("All","*.*")])
             if path:
                 self.df_var.set(path)
+        except Exception:
+            pass
+
+    def _pick_parquet_into(self, var: tk.StringVar) -> None:
+        try:
+            path = filedialog.askopenfilename(title="Select parquet dataset", initialdir=os.getcwd(), filetypes=[("Parquet","*.parquet"), ("All","*.*")])
+            if path:
+                var.set(path)
         except Exception:
             pass
 
@@ -1017,6 +1110,10 @@ class ValidationWindow(tk.Toplevel):
     def _run_other_df_async(self) -> None:
         self._start_busy("Predicting on DF...")
         threading.Thread(target=self._run_other_df_safe, daemon=True).start()
+
+    def _run_make_oof_async(self) -> None:
+        self._start_busy("Making OOF feature...")
+        threading.Thread(target=self._run_make_oof_safe, daemon=True).start()
 
     def _run_perm_async(self) -> None:
         self._start_busy("Running permutation test...")
@@ -1056,6 +1153,32 @@ class ValidationWindow(tk.Toplevel):
         except Exception as e:
             out = {"error": str(e)}
         self.after(0, lambda: (self._render_metrics(self.txt_other, out), self._finish_busy()))
+
+    def _run_make_oof_safe(self) -> None:
+        df_name = self.df_var.get().strip() or self.default_df
+        try:
+            folds = max(2, int(float(self.oof_folds_var.get())))
+        except Exception:
+            folds = 4
+        try:
+            gap = max(0, int(float(self.gap2_var.get())))
+        except Exception:
+            gap = 288
+        try:
+            from scripts.make_prediction_feature import make_oof_feature  # type: ignore
+            name = make_oof_feature(self.run_id, df_name, folds=folds, gap=gap, out_name=None, db_path=self.db_path)
+            # Try to (re)register prediction features so engine can see it
+            try:
+                import importlib
+                import src.prediction_features as pf  # type: ignore
+                importlib.reload(pf)
+            except Exception:
+                pass
+            msg = f"Saved OOF feature: {name}\nYou can now include it in selections."
+            self.after(0, lambda: (messagebox.showinfo("OOF Feature", msg), self._finish_busy()))
+        except Exception as e:
+            _msg = str(e)
+            self.after(0, lambda m=_msg: (messagebox.showerror("OOF Feature", m), self._finish_busy()))
 
     def _compute_metrics(self, df_name: str, gap: int) -> Dict[str, Any]:
         # Lazy import to reuse existing helpers
@@ -1168,17 +1291,23 @@ class ValidationWindow(tk.Toplevel):
     def _build_plot_tab(self, parent: ttk.Frame) -> None:
         frm = ttk.Frame(parent)
         frm.pack(side=tk.TOP, fill=tk.X, padx=8, pady=6)
-        ttk.Label(frm, text="Start:").grid(row=0, column=0, sticky=tk.W)
+        # DF selector for plotting (defaults to provided default_df)
+        ttk.Label(frm, text="DF_NAME:").grid(row=0, column=0, sticky=tk.W)
+        self.plot_df_var = tk.StringVar(value=self.default_df)
+        ttk.Entry(frm, textvariable=self.plot_df_var, width=48).grid(row=0, column=1, sticky=tk.W)
+        ttk.Button(frm, text="Pick .parquet", command=lambda: self._pick_parquet_into(self.plot_df_var)).grid(row=0, column=2, sticky=tk.W, padx=(8,0))
+
+        ttk.Label(frm, text="Start:").grid(row=1, column=0, sticky=tk.W, pady=(6,0))
         self.plot_start_var = tk.IntVar(value=0)
-        ttk.Entry(frm, textvariable=self.plot_start_var, width=10).grid(row=0, column=1, sticky=tk.W)
-        ttk.Label(frm, text="Len:").grid(row=0, column=2, sticky=tk.W, padx=(12,4))
+        ttk.Entry(frm, textvariable=self.plot_start_var, width=10).grid(row=1, column=1, sticky=tk.W, pady=(6,0))
+        ttk.Label(frm, text="Len:").grid(row=1, column=2, sticky=tk.W, padx=(12,4), pady=(6,0))
         self.plot_len_var = tk.IntVar(value=1000)
-        ttk.Entry(frm, textvariable=self.plot_len_var, width=10).grid(row=0, column=3, sticky=tk.W)
-        ttk.Button(frm, text="Compute", command=self._run_plot_compute_async).grid(row=0, column=4, sticky=tk.W, padx=(12,0))
-        ttk.Button(frm, text="Anterior", command=self._plot_prev).grid(row=0, column=5, sticky=tk.W, padx=(6,0))
-        ttk.Button(frm, text="Próximo", command=self._plot_next).grid(row=0, column=6, sticky=tk.W, padx=(6,0))
-        ttk.Button(frm, text="Redraw", command=self._plot_redraw).grid(row=0, column=7, sticky=tk.W, padx=(6,0))
-        ttk.Button(frm, text="Jump to Test", command=self._plot_jump_to_test).grid(row=0, column=8, sticky=tk.W, padx=(6,0))
+        ttk.Entry(frm, textvariable=self.plot_len_var, width=10).grid(row=1, column=3, sticky=tk.W, pady=(6,0))
+        ttk.Button(frm, text="Compute", command=self._run_plot_compute_async).grid(row=1, column=4, sticky=tk.W, padx=(12,0), pady=(6,0))
+        ttk.Button(frm, text="Anterior", command=self._plot_prev).grid(row=1, column=5, sticky=tk.W, padx=(6,0), pady=(6,0))
+        ttk.Button(frm, text="Próximo", command=self._plot_next).grid(row=1, column=6, sticky=tk.W, padx=(6,0), pady=(6,0))
+        ttk.Button(frm, text="Redraw", command=self._plot_redraw).grid(row=1, column=7, sticky=tk.W, padx=(6,0), pady=(6,0))
+        ttk.Button(frm, text="Jump to Test", command=self._plot_jump_to_test).grid(row=1, column=8, sticky=tk.W, padx=(6,0), pady=(6,0))
 
         # Info line
         self.plot_info_var = tk.StringVar(value="Ready")
@@ -1205,7 +1334,11 @@ class ValidationWindow(tk.Toplevel):
 
     def _run_plot_compute_safe(self) -> None:
         try:
-            df_name = self.df_var.get().strip() or self.default_df
+            # Prefer Plot's DF selection; fall back to Predict tab DF, then default
+            try:
+                df_name = (self.plot_df_var.get().strip()) or self.df_var.get().strip() or self.default_df
+            except Exception:
+                df_name = self.df_var.get().strip() or self.default_df
             try:
                 gap = int(float(self.gap2_var.get()))
             except Exception:
@@ -1222,7 +1355,8 @@ class ValidationWindow(tk.Toplevel):
             # Schedule redraw
             self.after(0, lambda: (self._plot_redraw(), self._finish_busy()))
         except Exception as e:
-            self.after(0, lambda: (messagebox.showerror("Plot error", str(e)), self._finish_busy()))
+            _msg = str(e)
+            self.after(0, lambda m=_msg: (messagebox.showerror("Plot error", m), self._finish_busy()))
 
     def _plot_redraw(self) -> None:
         df = self._plot_df_cache

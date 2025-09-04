@@ -276,6 +276,53 @@ def register_close_distance_features(
     return added
 
 
+def register_base_ema_atr_distance_features(
+    bases: List[str] = ["hlc3", "vwap"],
+    windows: List[int] = [48, 72, 144, 288, 576, 2016, 4032],
+) -> int:
+    """Register distance-to-EMA normalized by ATR for non-close bases.
+
+    For base in {hlc3, vwap} and each N in windows, registers:
+      - {base}_dist_ema_atr_w{N}
+    """
+    def _series_for_base(df: pd.DataFrame, base: str) -> pd.Series:
+        if base == "hlc3":
+            h = _to_num(df.get("high", pd.Series(dtype=float)))
+            l = _to_num(df.get("low", pd.Series(dtype=float)))
+            c = _to_num(df.get("close", pd.Series(dtype=float)))
+            return (h + l + c) / 3.0
+        if base == "vwap":
+            # Try registered pandas_ta VWAP first
+            try:
+                if "ta_volume_vwap" in registry.features:
+                    s = registry.features["ta_volume_vwap"](df)
+                    return _to_num(s)
+            except Exception:
+                pass
+            # Fallback to hlc3 if unavailable
+            return _series_for_base(df, "hlc3")
+        # default fallback
+        return _to_num(df.get("close", pd.Series(dtype=float)))
+
+    added = 0
+    for base in bases:
+        for n in windows:
+            N = int(n)
+            name = f"{base}_dist_ema_atr_w{N}"
+            if name in registry.features:
+                continue
+
+            @registry.register_feature(name)
+            def _feat(df: pd.DataFrame, BASE=base, N=N, NAME=name) -> pd.Series:
+                s = _series_for_base(df, BASE)
+                ema = _ema(s, N)
+                atr = _atr(df, N).replace(0.0, np.nan)
+                out = (s - ema) / atr
+                return out.clip(-10, 10).fillna(0.0).rename(NAME)
+            added += 1
+    return added
+
+
 def _safe_div(a: pd.Series, b: pd.Series) -> pd.Series:
     out = a / b.replace(0.0, np.nan)
     return out.replace([np.inf, -np.inf], np.nan)
@@ -454,7 +501,12 @@ except Exception:
 
 # Register close-distance features on import (lightweight registration only)
 try:
+    # Default set
     register_close_distance_features()
+    # Expand with prioritized windows: 4h, 6h, 12h, 2d, 2w
+    register_close_distance_features(windows=[48, 72, 144, 288, 576, 4032])
+    # Also add EMA/ATR distance for HLC3 and VWAP across same horizons
+    register_base_ema_atr_distance_features(bases=["hlc3", "vwap"], windows=[48, 72, 144, 288, 576, 2016, 4032])
 except Exception:
     pass
 
