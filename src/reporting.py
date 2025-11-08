@@ -81,7 +81,9 @@ def _composite_model_score(row: pd.Series) -> float:
 def features_table(ws: Optional[WeightStore] = None, filter_to_registry: bool = False) -> pd.DataFrame:
     """Return a DataFrame with feature weights and stats, plus a rank column."""
     ws = ws or WeightStore()
-    names = set(ws.features.keys()) | set(ws.features_stats.keys())
+    # Include registry features so unseen ones (n==0) appear with default weight
+    from .registry import registry as _reg
+    names = set(ws.features.keys()) | set(ws.features_stats.keys()) | set(_reg.features.keys())
     if filter_to_registry:
         reg_names = set(registry.features.keys())
         names &= reg_names
@@ -310,7 +312,13 @@ def runs_overview(db_path: str = 'runs.db', last: int = 5) -> Dict[str, Any]:
                     sel = json.loads(sj) if sj else None
                 except Exception:
                     sel = None
-                out["last"].append({"run_id": rid, "status": st, "model": (sel or {}).get('model'), "metrics": metrics})
+                out["last"].append({
+                    "run_id": rid,
+                    "status": st,
+                    "target": (sel or {}).get('target'),
+                    "model": (sel or {}).get('model'),
+                    "metrics": metrics,
+                })
     except Exception:
         pass
     return out

@@ -136,6 +136,57 @@ def register_transforms_for_top_features(
             added += (post - pre)
     return added
 
+def register_transforms_for_weight_keys(weights_path: Optional[str] = None, suffixes: Optional[List[str]] = None) -> int:
+    """Register transform wrappers for any feature keys present in weights.
+
+    If a key ends with a known transform suffix (e.g., _diff1, _pct1, _vel_ema)
+    and the base feature exists in the registry, register a wrapper on the fly.
+    This is useful when weights reference transformed TA outputs not pre-registered
+    in the current process.
+    """
+    import json
+    if weights_path is None:
+        weights_path = os.environ.get("WEIGHTS_JSON")
+    if not weights_path or not os.path.exists(weights_path):
+        return 0
+    try:
+        data = json.load(open(weights_path, 'r', encoding='utf-8'))
+        keys = list((data.get('features') or {}).keys())
+    except Exception:
+        return 0
+    suf = suffixes or ["_diff1", "_pct1", "_vel_ema"]
+    made = 0
+    for key in keys:
+        for sfx in suf:
+            if not key.endswith(sfx):
+                continue
+            base = key[: -len(sfx)]
+            if key in registry.features:
+                break
+            if base not in registry.features:
+                continue
+            name = key
+            if sfx == "_diff1":
+                F = _diff1
+            elif sfx == "_pct1":
+                F = _pct1
+            else:
+                F = _vel_ema
+
+            @registry.register_feature(name)
+            def _wrap(df: pd.DataFrame, BASE=base, NAME=name, TF=F) -> pd.Series:
+                s = registry.features[BASE](df)
+                try:
+                    s = pd.Series(s) if not isinstance(s, pd.Series) else s
+                except Exception:
+                    s = pd.Series(s)
+                out = TF(s)
+                out.name = NAME
+                return out
+            made += 1
+            break
+    return made
+
 def _ema(s: pd.Series, n: int) -> pd.Series:
     return _to_num(s).ewm(span=max(2, int(n)), adjust=False).mean()
 

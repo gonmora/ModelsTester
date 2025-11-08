@@ -75,6 +75,9 @@ class WeightStore:
         self.models_stats: Dict[str, Dict[str, Any]] = {}
         # model_target_stats[target][model] = stats dict
         self.model_target_stats: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        # features_audit[name] = { 'nan_rate': float, 'prefix_mismatch_rate': float,
+        #   'leak_score': float, 'flag_prefix': bool, 'flag_leak': bool, 'checked_at': str }
+        self.features_audit: Dict[str, Dict[str, Any]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -92,6 +95,7 @@ class WeightStore:
                 self.disabled_models = data.get("disabled_models", [])
                 self.models_stats = data.get("models_stats", {})
                 self.model_target_stats = data.get("model_target_stats", {})
+                self.features_audit = data.get("features_audit", {}) or {}
             except Exception:
                 pass
         # Enforce requested defaults: disable some models by default
@@ -118,6 +122,7 @@ class WeightStore:
                 "disabled_models": self.disabled_models,
                 "models_stats": self.models_stats,
                 "model_target_stats": self.model_target_stats,
+                "features_audit": self.features_audit,
             },
             open(self.path, "w", encoding="utf-8"),
             ensure_ascii=False,
@@ -219,6 +224,32 @@ def build_selection(
                 task_type = 'clf'
     except Exception:
         pass
+
+    # On-demand feature audit to prevent look-ahead features
+    # Audit only candidates with positive weight and not disabled
+    try:
+        from ..quality import audit_feature  # lazy import to avoid cycles
+    except Exception:
+        audit_feature = None  # type: ignore
+    if audit_feature is not None:
+        cand_names = [f for f in registry.features.keys() if f not in ws.disabled_features and ws.weight_for_feature(f) > 0.0]
+        for fid in cand_names:
+            if fid in ws.features_audit:
+                continue
+            try:
+                res = audit_feature(df, fid)
+            except Exception:
+                res = {"error": True}
+            ws.features_audit[fid] = res
+            # If suspicious, freeze by setting weight to 0.0 and disable
+            try:
+                if bool(res.get("flag_prefix") or res.get("flag_leak")):
+                    ws.features[fid] = 0.0
+                    if fid not in ws.disabled_features:
+                        ws.disabled_features.append(fid)
+                ws.save()
+            except Exception:
+                pass
 
     # Features universe: exclude disabled, zero-weight, and potential leakage from target
     # Default leakage guard: block features that look like predictions of the selected target

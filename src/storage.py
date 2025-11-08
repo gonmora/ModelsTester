@@ -148,6 +148,33 @@ def load_dataframe(name: str) -> pd.DataFrame:
     return df_filled
 
 
+def refresh_dataframe(name: str) -> pd.DataFrame:
+    """Force-refresh a base dataset by reloading from DB and overwriting the Parquet cache.
+
+    Parses names of the form <symbol>_<period>_<start>_<end>. If the name is a
+    direct path to a Parquet file, raises FileNotFoundError (not refreshable).
+    """
+    # Disallow direct file paths for refresh
+    if isinstance(name, str) and name.endswith('.parquet'):
+        raise FileNotFoundError("Cannot refresh a direct Parquet path; provide a logical DF_NAME")
+    # Parse name
+    try:
+        symbol, period, start, end = name.split("_", 3)
+    except ValueError:
+        raise FileNotFoundError(f"DataFrame '{name}' is not a recognized DF_NAME (symbol_period_start_end)")
+    start = _normalize_date(start)
+    end = _normalize_date(end)
+    # Reload from DB and cache
+    df_raw = db_to_df(symbol, period, start, end)
+    df_filled = fill_ohlc_gaps_flat(df_raw, start, end, zero_volume=True, add_flags=True)
+    save_dataframe(name, df_filled)
+    try:
+        df_filled.attrs['__df_name__'] = name
+    except Exception:
+        pass
+    return df_filled
+
+
 def dataframe_exists(name: str) -> bool:
     """Return True if a base dataset with the given name exists on disk."""
     return os.path.exists(_df_path(name))

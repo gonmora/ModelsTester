@@ -80,6 +80,25 @@ def _prepare_full_xy(df: pd.DataFrame, sel: Any) -> Tuple[pd.Series, pd.DataFram
 def _fit_predict_sel(model_id: str, X_tr: pd.DataFrame, y_tr: pd.Series, X_te: pd.DataFrame) -> np.ndarray:
     if model_id.startswith('tf_mlp'):
         return _fit_predict_tf(model_id, X_tr, y_tr, X_te)
+    if model_id == 'hgb_regressor':
+        from sklearn.experimental import enable_hist_gradient_boosting  # noqa: F401
+        from sklearn.ensemble import HistGradientBoostingRegressor
+        from sklearn.pipeline import Pipeline
+        from sklearn.impute import SimpleImputer
+
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("reg", HistGradientBoostingRegressor(
+                learning_rate=0.05,
+                max_iter=600,
+                min_samples_leaf=100,
+                early_stopping=True,
+                validation_fraction=0.1,
+                random_state=0,
+            )),
+        ])
+        pipe.fit(X_tr, y_tr)
+        return pipe.predict(X_te)
     # Logistic baseline
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
@@ -103,9 +122,13 @@ def make_oof_feature(run_id: str, df_name: str, folds: int = 4, gap: int = 288, 
     if not db_path:
         db_path = os.path.join(ROOT, 'runs_24M.db') if os.path.exists(os.path.join(ROOT, 'runs_24M.db')) else 'runs.db'
     sel = _load_selection(db_path, run_id)
-    # Enable TA features if present (no-op if unavailable)
+    # Enable TA / PV feature registries if available (imports have side effects).
     try:
         import src.ta_features  # noqa: F401
+    except Exception:
+        pass
+    try:
+        import src.pv_components  # noqa: F401
     except Exception:
         pass
     df = storage.load_dataframe(df_name)

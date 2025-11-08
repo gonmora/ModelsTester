@@ -22,6 +22,7 @@ from __future__ import annotations
 import os
 import sys
 import json
+import math
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -34,7 +35,7 @@ import numpy as np
 import datetime as dt
 import re
 import subprocess
-import threading
+from typing import Any, Dict, Optional, Tuple
 
 # Ensure project root is on sys.path so `import src.*` works when running as a script
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -62,6 +63,22 @@ try:
         runs_overview,
         features_table,
     )
+    # Ensure TA features are registered so they show up as unseen in tables
+    try:
+        import src.ta_features  # noqa: F401
+    except Exception:
+        pass
+    # Ensure Peaks & Valleys targets are registered for plotting new configs
+    try:
+        import src.pv_components  # noqa: F401
+    except Exception:
+        pass
+    # Ensure transform wrappers exist for any transformed keys in weights
+    try:
+        from src.feature_transforms import register_transforms_for_weight_keys as _reg_wk
+        _reg_wk(os.environ.get('WEIGHTS_JSON'))
+    except Exception:
+        pass
     # pairs_historical removed from this GUI (Target x Model tab removed)
 except Exception as e:
     # Fall back to showing a message and exiting gracefully
@@ -83,6 +100,7 @@ class MonitorGUI(tk.Tk):
         self.top_k = 10
         self.feature_filter_var = tk.StringVar(value="")
         self.target_filter_var = tk.StringVar(value="")
+        self._validation_defaults: Dict[str, Any] = {}
 
         # Load last-used preferences before building controls so defaults honor them
         try:
@@ -137,6 +155,7 @@ class MonitorGUI(tk.Tk):
             "target_filter": self.target_filter_var.get() if hasattr(self, "target_filter_var") else None,
             "normalize": bool(self.normalize_var.get()) if hasattr(self, "normalize_var") else False,
             "geometry": geo,
+            "validation_defaults": getattr(self, "_validation_defaults", {}),
         }
 
     def _apply_prefs(self, prefs: dict) -> None:
@@ -184,11 +203,34 @@ class MonitorGUI(tk.Tk):
         except Exception:
             pass
         try:
+            val = prefs.get("validation_defaults")
+            if isinstance(val, dict):
+                self._validation_defaults = val
+        except Exception:
+            pass
+        try:
             geo = prefs.get("geometry")
             if isinstance(geo, str) and geo:
                 self.geometry(geo)
         except Exception:
             pass
+
+    def set_validation_defaults(self, **updates: Any) -> None:
+        if not isinstance(updates, dict):
+            return
+        cur = getattr(self, "_validation_defaults", {})
+        if not isinstance(cur, dict):
+            cur = {}
+        cur.update({k: v for k, v in updates.items() if v is not None})
+        self._validation_defaults = cur
+        try:
+            self._save_prefs()
+        except Exception:
+            pass
+
+    def get_validation_defaults(self) -> Dict[str, Any]:
+        cur = getattr(self, "_validation_defaults", {})
+        return cur if isinstance(cur, dict) else {}
 
     def _save_prefs(self) -> None:
         path = self._prefs_path()
@@ -260,6 +302,10 @@ class MonitorGUI(tk.Tk):
         self.normalize_var = tk.BooleanVar(value=_norm_default)
         ttk.Checkbutton(frm, text="Normalize (sAUC·sAP)", variable=self.normalize_var).grid(row=2, column=5, sticky=tk.W, padx=(12,0), pady=(8,0))
 
+        # Include unseen features toggle
+        self.include_unseen_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(frm, text="Include unseen features", variable=self.include_unseen_var).grid(row=3, column=5, sticky=tk.W, padx=(12,0), pady=(8,0))
+
     def _build_tabs(self) -> None:
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill=tk.BOTH, expand=True)
@@ -299,7 +345,10 @@ class MonitorGUI(tk.Tk):
         self.tab_targets = self._add_table_tab("Targets", cols=["target","weight","n","mean","best","last","rank"]) 
         self.tab_tq = self._add_table_tab("Target Quality", cols=["target","runs","auc_median","auc_q025","auc_q975","auc_iqr","acc_median","ap_median","pos_rate_test_median"]) 
         self.tab_mq = self._add_table_tab("Model Quality & Timing", cols=["model","runs","auc_median","ap_median","fit_time_median_sec","predict_time_median_sec"]) 
-        self.tab_runs = self._add_table_tab("Recent Runs", cols=["run_id","status","model","metrics"]) 
+        self.tab_runs = self._add_table_tab("Recent Runs", cols=["run_id","status","target","model","metrics"]) 
+
+        # Feature Audit tab (look-ahead/leakage tests)
+        self._build_feature_audit_tab()
 
         # Bind double-click to toggle weight 0/1 for features and targets only
         self.tab_features.bind("<Double-1>", lambda e: self._on_toggle_weight(e, tree=self.tab_features, kind="feature", name_col="feature"))
@@ -324,6 +373,288 @@ class MonitorGUI(tk.Tk):
         except Exception:
             pass
         return tree
+
+    # ---------------- Feature Audit tab ----------------
+    def _build_feature_audit_tab(self) -> None:
+        frame = ttk.Frame(self.nb)
+        self.nb.add(frame, text="Feature Audit")
+        # Controls
+        ctrl = ttk.Frame(frame)
+        ctrl.pack(side=tk.TOP, fill=tk.X, padx=8, pady=6)
+        # DF selector
+        ttk.Label(ctrl, text="DF_NAME:").grid(row=0, column=0, sticky=tk.W)
+        # Default DF_NAME from env or project default
+        _df_default = os.environ.get("DF_NAME", "BTCUSDT_5m_20230831_20250830")
+        self.audit_df_var = tk.StringVar(value=_df_default)
+        ttk.Entry(ctrl, textvariable=self.audit_df_var, width=48).grid(row=0, column=1, sticky=tk.W)
+        ttk.Button(ctrl, text="Pick .parquet", command=lambda: self._pick_parquet_into(self.audit_df_var)).grid(row=0, column=2, sticky=tk.W, padx=(8,0))
+        # Checkpoints
+        ttk.Label(ctrl, text="Checkpoints:").grid(row=1, column=0, sticky=tk.W, pady=(6,0))
+        self.audit_ckp_var = tk.StringVar(value="0.5 0.7 0.9")
+        ttk.Entry(ctrl, textvariable=self.audit_ckp_var, width=20).grid(row=1, column=1, sticky=tk.W, pady=(6,0))
+        # Guard and Top
+        ttk.Label(ctrl, text="Guard:").grid(row=1, column=2, sticky=tk.W, padx=(12,4), pady=(6,0))
+        self.audit_guard_var = tk.StringVar(value="50")
+        ttk.Entry(ctrl, textvariable=self.audit_guard_var, width=8).grid(row=1, column=3, sticky=tk.W, pady=(6,0))
+        ttk.Label(ctrl, text="Top:").grid(row=1, column=4, sticky=tk.W, padx=(12,4), pady=(6,0))
+        self.audit_top_var = tk.StringVar(value="0")
+        ttk.Entry(ctrl, textvariable=self.audit_top_var, width=8).grid(row=1, column=5, sticky=tk.W, pady=(6,0))
+        ttk.Button(ctrl, text="Run", command=self._run_feature_audit_async).grid(row=1, column=6, sticky=tk.W, padx=(12,0), pady=(6,0))
+        ttk.Button(ctrl, text="Load Stored", command=self._load_feature_audit_stored).grid(row=1, column=7, sticky=tk.W, padx=(8,0), pady=(6,0))
+
+        # Feature filter + progress
+        ttk.Label(ctrl, text="Feature filter:").grid(row=2, column=0, sticky=tk.W, pady=(6,0))
+        self.audit_filter_var = tk.StringVar(value="")
+        ttk.Entry(ctrl, textvariable=self.audit_filter_var, width=20).grid(row=2, column=1, sticky=tk.W, pady=(6,0))
+        self.audit_status_var = tk.StringVar(value="Idle")
+        ttk.Label(ctrl, textvariable=self.audit_status_var).grid(row=2, column=2, sticky=tk.W, padx=(12,4), pady=(6,0))
+        self.audit_prog = ttk.Progressbar(ctrl, mode='indeterminate', length=120)
+        self.audit_prog.grid(row=2, column=3, columnspan=3, sticky=tk.W, pady=(6,0))
+
+        # Results grid (fixed base columns for streaming updates)
+        audit_cols = [
+            "feature",
+            "nan_rate",
+            "prefix_mismatch_rate",
+            "leak_score",
+            "status",
+            "flag_prefix",
+            "flag_leak",
+            "error",
+        ]
+        self.tab_audit_cols = audit_cols
+        self.tab_audit_tree = ttk.Treeview(frame, columns=audit_cols, show="headings")
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=self.tab_audit_tree.yview)
+        self.tab_audit_tree.configure(yscrollcommand=vsb.set)
+        self.tab_audit_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        for c in audit_cols:
+            self.tab_audit_tree.heading(c, text=c)
+            self.tab_audit_tree.column(c, anchor=tk.W, width=180 if c=="feature" else 120)
+        try:
+            self._tree_by_frame_id[str(frame)] = self.tab_audit_tree
+        except Exception:
+            pass
+
+    def _run_feature_audit_async(self) -> None:
+        try:
+            self.audit_status_var.set("Running…")
+            # Clear previous results
+            for it in list(self.tab_audit_tree.get_children()):
+                self.tab_audit_tree.delete(it)
+            # Start spinner
+            self.audit_prog.start(50)
+        except Exception:
+            pass
+        threading.Thread(target=self._run_feature_audit_safe, daemon=True).start()
+
+    def _run_feature_audit_safe(self) -> None:
+        import pandas as _pd
+        import numpy as _np
+        try:
+            df_name = self.audit_df_var.get().strip()
+            # Parse checkpoints as floats from space/comma separated input
+            raw = (self.audit_ckp_var.get() or "").replace(",", " ")
+            ckp = [float(x) for x in raw.split() if x.strip()]
+            if not ckp:
+                ckp = [0.5, 0.7, 0.9]
+            try:
+                guard = int(float(self.audit_guard_var.get()))
+            except Exception:
+                guard = 50
+            try:
+                top = int(float(self.audit_top_var.get()))
+            except Exception:
+                top = 0
+
+            # Load DF (path or storage)
+            df = None
+            try:
+                if df_name and os.path.exists(df_name):
+                    if df_name.endswith('.parquet'):
+                        df = _pd.read_parquet(df_name)
+                    elif df_name.endswith('.csv'):
+                        df = _pd.read_csv(df_name)
+                        for col in ('date','timestamp','time'):
+                            if col in df.columns:
+                                try:
+                                    df[col] = _pd.to_datetime(df[col])
+                                    df = df.set_index(col)
+                                    break
+                                except Exception:
+                                    pass
+                if df is None:
+                    from src import storage as _storage
+                    df = _storage.load_dataframe(df_name)
+            except Exception as e:
+                self.after(0, lambda: self._set_tree_error(self.tab_audit_tree, f"Load DF error: {e}"))
+                return
+
+            # Ensure TA features registered
+            try:
+                import src.ta_features  # noqa: F401
+            except Exception:
+                pass
+            from src.registry import registry as _registry
+
+            feats = list(_registry.features.keys())
+            # Apply name filter if provided (case-insensitive substring)
+            try:
+                filt = (self.audit_filter_var.get() or "").strip()
+            except Exception:
+                filt = ""
+            if filt:
+                fl = filt.lower()
+                feats = [f for f in feats if fl in f.lower()]
+            if top and top > 0:
+                feats = feats[: int(top)]
+
+            total = len(feats)
+            self.after(0, lambda: self.audit_status_var.set(f"Running… 0/{total}"))
+
+            def _as_series(x: _pd.Series | _pd.DataFrame) -> _pd.Series:
+                if isinstance(x, _pd.DataFrame):
+                    return x.iloc[:, 0] if x.shape[1] >= 1 else _pd.Series(dtype=float)
+                return x
+
+            def compute_feature(fid: str) -> _pd.Series:
+                try:
+                    s = _registry.features[fid](df)
+                    s = _as_series(s)
+                    return _pd.to_numeric(s, errors='coerce')
+                except Exception as e:
+                    raise RuntimeError(str(e))
+
+            def prefix_stability(fid: str) -> tuple[float, dict[str, float]]:
+                f_full = compute_feature(fid)
+                n = len(df)
+                if n == 0 or f_full is None:
+                    return float('nan'), {}
+                per: dict[str, float] = {}
+                tot_changes = 0
+                tot_compared = 0
+                for frac in ckp:
+                    K = int(max(0.0, min(1.0, float(frac))) * n)
+                    if K <= max(5, guard):
+                        per[f"{frac:.2f}"] = float('nan')
+                        continue
+                    f_pref = _registry.features[fid](df.iloc[:K].copy())
+                    f_pref = _as_series(f_pref)
+                    f_pref = _pd.to_numeric(f_pref, errors='coerce')
+                    a = f_full.iloc[: K - guard]
+                    b = f_pref.iloc[: K - guard]
+                    m = _pd.concat({'a': a, 'b': b}, axis=1).dropna()
+                    if len(m) == 0:
+                        per[f"{frac:.2f}"] = float('nan')
+                        continue
+                    diff = (m['a'] - m['b']).abs()
+                    changes = int((diff > 1e-9).sum())
+                    compared = int(len(diff))
+                    tot_changes += changes
+                    tot_compared += compared
+                    per[f"{frac:.2f}"] = (changes / compared) if compared > 0 else float('nan')
+                overall = (tot_changes / tot_compared) if tot_compared > 0 else float('nan')
+                return overall, per
+
+            def leakage_proxy(x: _pd.Series) -> float:
+                try:
+                    close = _pd.to_numeric(df['close'], errors='coerce').astype(float)
+                except Exception:
+                    return float('nan')
+                ret_fut = close.pct_change(1).shift(-1)
+                ret_pst = close.pct_change(1).shift(1)
+                def ic(y, z) -> float:
+                    m = _pd.concat([y, z], axis=1).dropna()
+                    if len(m) < 50 or m.iloc[:, 0].std(ddof=0) == 0 or m.iloc[:, 1].std(ddof=0) == 0:
+                        return float('nan')
+                    from scipy.stats import spearmanr
+                    return float(spearmanr(m.iloc[:, 0], m.iloc[:, 1], nan_policy='omit').statistic)
+                ic_f = ic(x, ret_fut)
+                ic_p = ic(x, ret_pst)
+                if math.isnan(ic_f) or math.isnan(ic_p):
+                    return float('nan')
+                return float(ic_f - ic_p)
+
+            count = 0
+            for fid in feats:
+                try:
+                    x = compute_feature(fid)
+                    nan_rate = float(x.isna().mean()) if len(x) else float('nan')
+                    overall, per = prefix_stability(fid)
+                    leak = leakage_proxy(x)
+                    row = {
+                        'feature': fid,
+                        'nan_rate': nan_rate,
+                        'prefix_mismatch_rate': overall,
+                        'leak_score': leak,
+                        'status': ('suspicious' if ((float(overall) > 0.0 if _pd.notna(overall) else False) or (float(leak) > 0.2 if _pd.notna(leak) else False)) else 'ok'),
+                        'flag_prefix': (float(overall) > 0.0) if _pd.notna(overall) else False,
+                        'flag_leak': (float(leak) > 0.2) if _pd.notna(leak) else False,
+                        'error': None,
+                    }
+                    count += 1
+                    self.after(0, lambda r=row, c=count, t=total: (self._audit_append_row(r), self.audit_status_var.set(f"Running… {c}/{t}")))
+                except Exception as e:
+                    row = {
+                        'feature': fid,
+                        'nan_rate': None,
+                        'prefix_mismatch_rate': None,
+                        'leak_score': None,
+                        'status': 'error',
+                        'flag_prefix': None,
+                        'flag_leak': None,
+                        'error': str(e),
+                    }
+                    count += 1
+                    self.after(0, lambda r=row, c=count, t=total: (self._audit_append_row(r), self.audit_status_var.set(f"Running… {c}/{t}")))
+
+            # Finish
+            self.after(0, self._audit_finish)
+        except Exception as e:
+            _msg = str(e)
+            self.after(0, lambda m=_msg: (self._set_tree_error(self.tab_audit_tree, f"Audit error: {m}"), self._audit_finish()))
+
+    def _audit_finish(self) -> None:
+        try:
+            self.audit_prog.stop()
+            self.audit_status_var.set("Idle")
+        except Exception:
+            pass
+
+    def _audit_append_row(self, row: dict) -> None:
+        try:
+            cols = list(self.tab_audit_cols)
+            vals = [row.get(c, "") for c in cols]
+            self.tab_audit_tree.insert("", tk.END, values=vals)
+        except Exception:
+            pass
+
+    def _load_feature_audit_stored(self) -> None:
+        try:
+            from src.runner.engine import WeightStore as _WS
+            ws = _WS(path=self.weights_var.get().strip()) if hasattr(self, 'weights_var') else _WS()
+            data = getattr(ws, 'features_audit', {}) or {}
+            rows = []
+            for fid, d in data.items():
+                fp = bool(d.get('flag_prefix'))
+                fl = bool(d.get('flag_leak'))
+                err = d.get('error')
+                status = 'error' if err else ('suspicious' if (fp or fl) else 'ok')
+                rows.append({
+                    'feature': fid,
+                    'nan_rate': d.get('nan_rate'),
+                    'prefix_mismatch_rate': d.get('prefix_mismatch_rate'),
+                    'leak_score': d.get('leak_score'),
+                    'status': status,
+                    'flag_prefix': d.get('flag_prefix'),
+                    'flag_leak': d.get('flag_leak'),
+                    'error': err,
+                })
+            import pandas as _pd
+            df = _pd.DataFrame(rows, columns=self.tab_audit_cols)
+            self._fill_tree(self.tab_audit_tree, df)
+        except Exception as e:
+            self._set_tree_error(self.tab_audit_tree, f"Load Stored error: {e}")
 
     def export_active_to_excel(self) -> None:
         """Export the currently active grid to an Excel file.
@@ -479,11 +810,12 @@ class MonitorGUI(tk.Tk):
             # Fetch ALL features ranked by composite score; do not cap here
             try:
                 tf_df = features_table(ws=ws)
-                # Default behavior: hide unseen (n == 0); keep full list (no cap)
-                tf_df = tf_df[tf_df.get('n', 0) > 0]
-                if len(tf_df) == 0:
-                    # Fallback: include unseen by weight when there are no stats yet
-                    tf_df = features_table(ws=ws)
+                # Optionally hide unseen (n == 0)
+                try:
+                    if not bool(self.include_unseen_var.get()):
+                        tf_df = tf_df[tf_df.get('n', 0) > 0]
+                except Exception:
+                    pass
             except Exception:
                 tf_df = pd.DataFrame()
             # Apply feature name filter if provided
@@ -551,10 +883,11 @@ class MonitorGUI(tk.Tk):
                 rows.append({
                     'run_id': r.get('run_id'),
                     'status': r.get('status'),
+                    'target': r.get('target'),
                     'model': r.get('model'),
                     'metrics': r.get('metrics'),
                 })
-            df = pd.DataFrame(rows, columns=['run_id','status','model','metrics'])
+            df = pd.DataFrame(rows, columns=['run_id','status','target','model','metrics'])
             self._fill_tree(self.tab_runs, df)
         except Exception as e:
             self._set_tree_error(self.tab_runs, f"Error: {e}")
@@ -864,6 +1197,10 @@ class ValidationWindow(tk.Toplevel):
         self.db_path = db_path
         self.run_id = run_id
         self.default_df = default_df
+        try:
+            self.protocol("WM_DELETE_WINDOW", self._on_close)
+        except Exception:
+            pass
         # Cache for selection/metrics/artifacts
         self._sel_cache = None
         self._met_cache = None
@@ -884,9 +1221,25 @@ class ValidationWindow(tk.Toplevel):
         frm.pack(side=tk.TOP, fill=tk.X, padx=8, pady=6)
         ttk.Label(frm, text=f"run_id:").grid(row=0, column=0, sticky=tk.W)
         ttk.Label(frm, text=run_id).grid(row=0, column=1, sticky=tk.W)
+        defaults = {}
+        try:
+            defaults = master.get_validation_defaults()
+        except Exception:
+            defaults = {}
+        df_default = str(defaults.get("df_name") or default_df)
+        gap_default = str(defaults.get("gap") or "288")
+        gap_other_default = str(defaults.get("gap_other") or "288")
+        folds_default = str(defaults.get("folds") or "4")
+        out_name_default = str(defaults.get("out_name") or "")
+        self._df_default = df_default
+        self._gap_other_default = gap_other_default
+        self._folds_default = folds_default
+        self._out_name_default = out_name_default
+
         ttk.Label(frm, text="GAP (bars):").grid(row=0, column=2, sticky=tk.W, padx=(12,4))
-        self.gap_var = tk.StringVar(value="288")
+        self.gap_var = tk.StringVar(value=gap_default)
         ttk.Entry(frm, textvariable=self.gap_var, width=8).grid(row=0, column=3, sticky=tk.W)
+        self._bind_default_var(self.gap_var, "gap")
         ttk.Button(frm, text="Validate", command=self._run_validate_async).grid(row=0, column=4, sticky=tk.W, padx=(12,0))
         # Busy status and progress
         self.status_var = tk.StringVar(value="Idle")
@@ -928,6 +1281,11 @@ class ValidationWindow(tk.Toplevel):
         self.nb.add(self.tab_plot, text="Plot")
         self._build_plot_tab(self.tab_plot)
 
+        # Try online tab
+        self.tab_online = ttk.Frame(self.nb)
+        self.nb.add(self.tab_online, text="Try online")
+        self._build_online_tab(self.tab_online)
+
         # Legend
         legend = (
             "Legend (ideal): AUC>0.6, AP-lift>1, P@1/5/10% >> base rate, "
@@ -936,6 +1294,111 @@ class ValidationWindow(tk.Toplevel):
         ttk.Label(self, text=legend).pack(side=tk.BOTTOM, anchor=tk.W, padx=8, pady=6)
 
         # Do not auto-run validation; user triggers via Validate button
+
+    def _bind_default_var(self, var: tk.StringVar, key: str) -> None:
+        try:
+            var.trace_add("write", lambda *_, v=var, k=key: self._persist_default(k, v.get()))
+        except Exception:
+            pass
+
+    def _persist_default(self, key: str, value: Any) -> None:
+        try:
+            if hasattr(self.master, "set_validation_defaults"):
+                self.master.set_validation_defaults(**{key: value})
+        except Exception:
+            pass
+
+    def _resolve_out_name(self) -> str:
+        try:
+            raw = self.oof_name_var.get().strip()
+        except Exception:
+            raw = ""
+        if raw:
+            return raw
+        sel = self._sel_cache or {}
+        tgt = sel.get('target')
+        mdl = str(sel.get('model') or '')
+        if tgt and mdl:
+            safe_model = mdl.replace('/', '_')
+            return f"pred_{tgt}__{safe_model}__oof"
+        return ""
+
+    def _resolve_base_name(self, df_name: str) -> str:
+        if not df_name:
+            return ""
+        if df_name.endswith('.parquet'):
+            return os.path.splitext(os.path.basename(df_name))[0]
+        return df_name
+
+    def _check_dataset_artifacts(self, df_name: str) -> Tuple[str, list[str], list[str]]:
+        try:
+            from src import storage
+        except Exception:
+            return self._resolve_base_name(df_name), [], []
+        base = self._resolve_base_name(df_name)
+        sel = self._sel_cache or {}
+        target = sel.get('target')
+        feats = sel.get('features') or []
+        missing_target: list[str] = []
+        missing_feats: list[str] = []
+        if base and target:
+            tpath = os.path.join(storage.DATA_DIR, f"{base}__target__{target}.parquet")
+            if not os.path.exists(tpath):
+                missing_target.append(str(target))
+        if base:
+            for fid in feats:
+                fpath = os.path.join(storage.DATA_DIR, f"{base}__feature__{fid}.parquet")
+                if not os.path.exists(fpath):
+                    missing_feats.append(str(fid))
+        return base, missing_target, missing_feats
+
+    def _feature_path_for(self, base_name: str, feature_name: str) -> Optional[str]:
+        if not base_name or not feature_name:
+            return None
+        try:
+            from src import storage
+        except Exception:
+            return None
+        return os.path.join(storage.DATA_DIR, f"{base_name}__feature__{feature_name}.parquet")
+
+    def _summarize_oof(self, base_name: str, feature_name: str) -> str:
+        if not base_name or not feature_name:
+            return f"Feature saved: {feature_name}"
+        try:
+            from src import storage
+        except Exception:
+            return f"Feature saved: {feature_name}"
+        path = self._feature_path_for(base_name, feature_name)
+        if not path or not os.path.exists(path):
+            return f"Feature saved: {feature_name}"
+        lines = [f"Feature path: {path}"]
+        try:
+            data = pd.read_parquet(path)
+            series = data.iloc[:, 0] if getattr(data, 'ndim', 1) > 1 else data
+            ratio = float(series.notna().mean()) if len(series) else float('nan')
+            lines.append(f"Non-null ratio: {ratio:.4f}")
+            desc = series.describe()
+            lines.append("Describe:")
+            for idx, val in desc.items():
+                try:
+                    lines.append(f"  {idx}: {float(val):.6f}")
+                except Exception:
+                    lines.append(f"  {idx}: {val}")
+            sel = self._sel_cache or {}
+            tgt = sel.get('target')
+            if tgt:
+                tpath = os.path.join(storage.DATA_DIR, f"{base_name}__target__{tgt}.parquet")
+                if os.path.exists(tpath):
+                    target_series = pd.read_parquet(tpath).iloc[:, 0]
+                    mask = series.notna() & target_series.notna()
+                    if mask.any():
+                        corr = float(series[mask].corr(target_series[mask]))
+                        lines.append(f"Pearson corr vs target: {corr:.4f}")
+                    else:
+                        lines.append("Pearson corr vs target: n/a (no overlap)")
+        except Exception as exc:
+            lines.append(f"Failed to summarize feature: {exc}")
+        return "\n".join(lines)
 
     def _build_metrics_tab(self, parent: ttk.Frame) -> None:
         self.txt_metrics = tk.Text(parent, height=24)
@@ -973,7 +1436,7 @@ class ValidationWindow(tk.Toplevel):
         # Short metrics line if available
         if isinstance(met, dict) and met:
             parts = []
-            for k in ("auc","ap","accuracy","skill","r2","spearman"):
+            for k in ("auc","ap","accuracy","skill","r2","rmse","mae","pearson","spearman"):
                 v = met.get(k)
                 if v is None:
                     continue
@@ -1049,17 +1512,29 @@ class ValidationWindow(tk.Toplevel):
         frm = ttk.Frame(parent)
         frm.pack(side=tk.TOP, fill=tk.X, padx=8, pady=6)
         ttk.Label(frm, text="DF_NAME:").grid(row=0, column=0, sticky=tk.W)
-        self.df_var = tk.StringVar(value=self.default_df)
+        base_df_default = getattr(self, "_df_default", self.default_df)
+        self.df_var = tk.StringVar(value=base_df_default)
         ttk.Entry(frm, textvariable=self.df_var, width=48).grid(row=0, column=1, sticky=tk.W)
+        self._bind_default_var(self.df_var, "df_name")
         ttk.Button(frm, text="Pick .parquet", command=self._pick_parquet).grid(row=0, column=2, sticky=tk.W, padx=(8,0))
         ttk.Label(frm, text="GAP:").grid(row=0, column=3, sticky=tk.W, padx=(12,4))
-        self.gap2_var = tk.StringVar(value="288")
+        gap_other_default = getattr(self, "_gap_other_default", "288")
+        self.gap2_var = tk.StringVar(value=gap_other_default)
         ttk.Entry(frm, textvariable=self.gap2_var, width=8).grid(row=0, column=4, sticky=tk.W)
+        self._bind_default_var(self.gap2_var, "gap_other")
         ttk.Label(frm, text="Folds:").grid(row=0, column=5, sticky=tk.W, padx=(12,4))
-        self.oof_folds_var = tk.StringVar(value="4")
+        folds_default = getattr(self, "_folds_default", "4")
+        self.oof_folds_var = tk.StringVar(value=folds_default)
         ttk.Entry(frm, textvariable=self.oof_folds_var, width=6).grid(row=0, column=6, sticky=tk.W)
-        ttk.Button(frm, text="Run", command=self._run_other_df_async).grid(row=0, column=7, sticky=tk.W, padx=(12,0))
-        ttk.Button(frm, text="Make OOF Feature", command=self._run_make_oof_async).grid(row=0, column=8, sticky=tk.W, padx=(8,0))
+        self._bind_default_var(self.oof_folds_var, "folds")
+        ttk.Label(frm, text="Out name:").grid(row=0, column=7, sticky=tk.W, padx=(12,4))
+        out_name_default = getattr(self, "_out_name_default", "")
+        self.oof_name_var = tk.StringVar(value=out_name_default)
+        ttk.Entry(frm, textvariable=self.oof_name_var, width=30).grid(row=0, column=8, sticky=tk.W)
+        self._bind_default_var(self.oof_name_var, "out_name")
+        ttk.Button(frm, text="Run", command=self._run_other_df_async).grid(row=0, column=9, sticky=tk.W, padx=(12,0))
+        self.btn_make_oof = ttk.Button(frm, text="Make OOF Feature", command=self._run_make_oof_async)
+        self.btn_make_oof.grid(row=0, column=10, sticky=tk.W, padx=(8,0))
         self.txt_other = tk.Text(parent, height=22)
         self.txt_other.pack(fill=tk.BOTH, expand=True)
 
@@ -1068,6 +1543,7 @@ class ValidationWindow(tk.Toplevel):
             path = filedialog.askopenfilename(title="Select parquet dataset", initialdir=os.getcwd(), filetypes=[("Parquet","*.parquet"), ("All","*.*")])
             if path:
                 self.df_var.set(path)
+                self._persist_default("df_name", path)
         except Exception:
             pass
 
@@ -1076,6 +1552,7 @@ class ValidationWindow(tk.Toplevel):
             path = filedialog.askopenfilename(title="Select parquet dataset", initialdir=os.getcwd(), filetypes=[("Parquet","*.parquet"), ("All","*.*")])
             if path:
                 var.set(path)
+                self._persist_default("df_name", path)
         except Exception:
             pass
 
@@ -1164,9 +1641,60 @@ class ValidationWindow(tk.Toplevel):
             gap = max(0, int(float(self.gap2_var.get())))
         except Exception:
             gap = 288
+        out_name = self._resolve_out_name()
         try:
+            base_name, missing_target, missing_feats = self._check_dataset_artifacts(df_name)
+            if missing_target or missing_feats:
+                msg = []
+                if missing_target:
+                    msg.append(f"Missing target parquet: {missing_target[0] if missing_target else ''}")
+                if missing_feats:
+                    msg.append("Missing feature parquets:\n- " + "\n- ".join(missing_feats[:20]))
+                    if len(missing_feats) > 20:
+                        msg.append(f"(+ {len(missing_feats) - 20} more)")
+                text = "\n".join(msg) or "Required artifacts not found."
+                def _warn():
+                    try:
+                        messagebox.showwarning("OOF Feature", text)
+                    except Exception:
+                        pass
+                    try:
+                        self.txt_other.delete("1.0", tk.END)
+                        self.txt_other.insert(tk.END, text)
+                    except Exception:
+                        pass
+                    self._finish_busy()
+                self.after(0, _warn)
+                return
+
+            existing_path = self._feature_path_for(base_name, out_name) if base_name else None
+            if existing_path and os.path.exists(existing_path):
+                proceed = False
+                try:
+                    proceed = messagebox.askyesno(
+                        "Overwrite feature",
+                        f"Feature parquet already exists:\n{existing_path}\n\nOverwrite?",
+                    )
+                except Exception:
+                    proceed = False
+                if not proceed:
+                    self.after(0, self._finish_busy)
+                    return
+
             from scripts.make_prediction_feature import make_oof_feature  # type: ignore
-            name = make_oof_feature(self.run_id, df_name, folds=folds, gap=gap, out_name=None, db_path=self.db_path)
+            name = make_oof_feature(
+                self.run_id,
+                df_name,
+                folds=folds,
+                gap=gap,
+                out_name=out_name or None,
+                db_path=self.db_path,
+            )
+            try:
+                if name:
+                    self._persist_default("out_name", name)
+            except Exception:
+                pass
             # Try to (re)register prediction features so engine can see it
             try:
                 import importlib
@@ -1174,115 +1702,214 @@ class ValidationWindow(tk.Toplevel):
                 importlib.reload(pf)
             except Exception:
                 pass
+            summary = self._summarize_oof(base_name, name)
             msg = f"Saved OOF feature: {name}\nYou can now include it in selections."
-            self.after(0, lambda: (messagebox.showinfo("OOF Feature", msg), self._finish_busy()))
+            def _notify():
+                try:
+                    messagebox.showinfo("OOF Feature", msg)
+                except Exception:
+                    pass
+                try:
+                    self.txt_other.delete("1.0", tk.END)
+                    self.txt_other.insert(tk.END, summary)
+                except Exception:
+                    pass
+                self._finish_busy()
+            self.after(0, _notify)
         except Exception as e:
             _msg = str(e)
             self.after(0, lambda m=_msg: (messagebox.showerror("OOF Feature", m), self._finish_busy()))
 
-    def _compute_metrics(self, df_name: str, gap: int) -> Dict[str, Any]:
+    def _compute_metrics(self, df_name: str, gap: int, prefer_local: bool = False) -> Dict[str, Any]:
         # Lazy import to reuse existing helpers
-        from scripts.extended_metrics_for_run import _load_selection, _prepare_xy, _fit_predict_tf  # type: ignore
-        from sklearn.metrics import roc_auc_score, average_precision_score, precision_score, recall_score, f1_score, accuracy_score, brier_score_loss
-        import numpy as np
+        from scripts.extended_metrics_for_run import _load_selection, _prepare_xy  # type: ignore
 
         sel = _load_selection(self.db_path, self.run_id)
         # Ensure TA features are registered in this process
         self._ensure_ta_features()
-        # Try standard path first; on failure (no cache/db), fall back to in-memory pipe
-        try:
-            Xtr, ytr, Xte, yte = _prepare_xy(df_name, sel, gap=gap)
-        except Exception as e:
-            # Fallback: compute everything locally, loading df either from path or storage
+        # Prefer local recomputation (no cache read) when requested
+        if prefer_local:
             df = self._load_df_flexible(df_name)
             if df is None:
-                try:
-                    from src import storage
-                    df = storage.load_dataframe(df_name)
-                except Exception as e2:
-                    # If it was a db_to_df error, show actionable message
-                    msg = f"{e}; {e2}"
-                    if 'db.db_to_df' in msg:
-                        raise RuntimeError(
-                            "Dataset not found in cache and DB loader unavailable. "
-                            "Use 'Pick .parquet' to select an existing dataset file."
-                        )
-                    # otherwise bubble up original error chain
-                    raise
+                from src import storage
+                df = storage.load_dataframe(df_name)
             Xtr, ytr, Xte, yte = self._prepare_xy_local(df, sel, gap=gap)
-        # Only classification path for now
-        if not (ytr.dropna().nunique() <= 2 and set(ytr.dropna().unique()).issubset({0,1})):
-            return {"error": "Non-binary target not supported in this view yet."}
-        if sel.model.startswith('tf_mlp'):
-            probs = _fit_predict_tf(sel.model, Xtr, ytr, Xte)
         else:
-            from sklearn.linear_model import LogisticRegression
-            from sklearn.preprocessing import StandardScaler
-            from sklearn.pipeline import Pipeline
-            from sklearn.impute import SimpleImputer
-            pipe = Pipeline([
-                ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", StandardScaler()),
-                ("clf", LogisticRegression(solver="lbfgs", max_iter=1000, random_state=0)),
-            ])
-            pipe.fit(Xtr, ytr)
-            probs = pipe.predict_proba(Xte)[:, 1]
-        y_true = yte.to_numpy().astype(int)
-        auc = float(roc_auc_score(y_true, probs))
-        ap = float(average_precision_score(y_true, probs))
-        pos_rate = float(y_true.mean()) if len(y_true) else float('nan')
-        ap_lift = (ap / pos_rate) if pos_rate and pos_rate > 0 else float('nan')
-        # threshold metrics
-        def tmet(t: float) -> Dict[str, Any]:
-            preds = (probs >= t).astype(int)
-            return {
-                'precision': float(precision_score(y_true, preds, zero_division=0)),
-                'recall': float(recall_score(y_true, preds, zero_division=0)),
-                'f1': float(f1_score(y_true, preds, zero_division=0)),
-                'accuracy': float(accuracy_score(y_true, preds)),
-            }
-        thr05 = tmet(0.5)
-        # best F1
-        thr_grid = np.quantile(np.unique(np.clip(probs,0,1)), np.linspace(0,1,256))
-        f1s = [(float(f1_score(y_true, (probs>=t).astype(int), zero_division=0)), float(t)) for t in thr_grid]
-        best_f1, best_t = max(f1s, key=lambda x: (x[0], x[1])) if f1s else (float('nan'), 0.5)
-        thr_best = tmet(best_t)
-        # ranking
-        def p_at(frac: float) -> float:
-            k = max(1, int(len(probs) * frac))
-            idx = np.argsort(-probs)[:k]
-            return float(y_true[idx].mean())
-        # calibration
-        brier = float(brier_score_loss(y_true, np.clip(probs,0,1)))
-        pos = np.sort(probs[y_true==1])
-        neg = np.sort(probs[y_true==0])
-        ks = float('nan')
-        if len(pos) and len(neg):
-            thr = np.unique(np.concatenate([pos, neg]))
-            cdf_pos = np.searchsorted(pos, thr, side='right')/len(pos)
-            cdf_neg = np.searchsorted(neg, thr, side='right')/len(neg)
-            ks = float(np.max(np.abs(cdf_pos-cdf_neg)))
-        return {
+            # Try standard path first; on failure (no cache/db), fall back to in-memory pipe
+            try:
+                Xtr, ytr, Xte, yte = _prepare_xy(df_name, sel, gap=gap)
+            except Exception as e:
+                # Fallback: compute everything locally, loading df either from path or storage
+                df = self._load_df_flexible(df_name)
+                if df is None:
+                    try:
+                        from src import storage
+                        df = storage.load_dataframe(df_name)
+                    except Exception as e2:
+                        # If it was a db_to_df error, show actionable message
+                        msg = f"{e}; {e2}"
+                        if 'db.db_to_df' in msg:
+                            raise RuntimeError(
+                                "Dataset not found in cache and DB loader unavailable. "
+                                "Use 'Pick .parquet' to select an existing dataset file."
+                            )
+                        # otherwise bubble up original error chain
+                        raise
+                Xtr, ytr, Xte, yte = self._prepare_xy_local(df, sel, gap=gap)
+
+        out = self._metrics_from_split(sel, Xtr, ytr, Xte, yte)
+        out.update({
             'db_path': self.db_path,
             'df_name': df_name,
             'run_id': self.run_id,
-            'target': sel.target,
-            'model': sel.model,
+            'target': self._sel_attr(sel, 'target', 'unknown'),
+            'model': self._sel_attr(sel, 'model', 'unknown'),
+        })
+        return out
+
+    def _metrics_from_split(self, sel: Dict[str, Any], Xtr, ytr, Xte, yte) -> Dict[str, Any]:
+        from scripts.extended_metrics_for_run import _fit_predict_tf  # type: ignore
+        from sklearn.metrics import (
+            roc_auc_score,
+            average_precision_score,
+            precision_score,
+            recall_score,
+            f1_score,
+            accuracy_score,
+            brier_score_loss,
+            r2_score,
+            mean_absolute_error,
+            mean_squared_error,
+        )
+        import numpy as _np
+
+        model_name = str(self._sel_attr(sel, 'model', '') or '')
+        # Detect task type by y distribution
+        is_binary = (ytr.dropna().nunique() <= 2 and set(ytr.dropna().unique()).issubset({0,1}))
+        if is_binary:
+            # Classification
+            if model_name.startswith('tf_mlp'):
+                probs = _fit_predict_tf(model_name, Xtr, ytr, Xte)
+            else:
+                from sklearn.linear_model import LogisticRegression
+                from sklearn.preprocessing import StandardScaler
+                from sklearn.pipeline import Pipeline
+                from sklearn.impute import SimpleImputer
+                pipe = Pipeline([
+                    ("imputer", SimpleImputer(strategy="median")),
+                    ("scaler", StandardScaler()),
+                    ("clf", LogisticRegression(solver="lbfgs", max_iter=1000, random_state=0)),
+                ])
+                pipe.fit(Xtr, ytr)
+                probs = pipe.predict_proba(Xte)[:, 1]
+            y_true = yte.to_numpy().astype(int)
+            auc = float(roc_auc_score(y_true, probs))
+            ap = float(average_precision_score(y_true, probs))
+            pos_rate = float(y_true.mean()) if len(y_true) else float('nan')
+            ap_lift = (ap / pos_rate) if pos_rate and pos_rate > 0 else float('nan')
+
+            def tmet(t: float) -> Dict[str, Any]:
+                preds = (probs >= t).astype(int)
+                return {
+                    'precision': float(precision_score(y_true, preds, zero_division=0)),
+                    'recall': float(recall_score(y_true, preds, zero_division=0)),
+                    'f1': float(f1_score(y_true, preds, zero_division=0)),
+                    'accuracy': float(accuracy_score(y_true, preds)),
+                }
+
+            thr05 = tmet(0.5)
+            thr_grid = _np.quantile(_np.unique(_np.clip(probs, 0, 1)), _np.linspace(0, 1, 256))
+            f1s = [(float(f1_score(y_true, (probs >= t).astype(int), zero_division=0)), float(t)) for t in thr_grid]
+            best_f1, best_t = max(f1s, key=lambda x: (x[0], x[1])) if f1s else (float('nan'), 0.5)
+            thr_best = tmet(best_t)
+
+            brier = float(brier_score_loss(y_true, _np.clip(probs, 0, 1)))
+            pos = _np.sort(probs[y_true == 1])
+            neg = _np.sort(probs[y_true == 0])
+            ks = float('nan')
+            if len(pos) and len(neg):
+                thr = _np.unique(_np.concatenate([pos, neg]))
+                cdf_pos = _np.searchsorted(pos, thr, side='right') / len(pos)
+                cdf_neg = _np.searchsorted(neg, thr, side='right') / len(neg)
+                ks = float(_np.max(_np.abs(cdf_pos - cdf_neg)))
+
+            def p_at(frac: float) -> float:
+                k = max(1, int(len(probs) * frac))
+                idx = _np.argsort(-probs)[:k]
+                return float(y_true[idx].mean())
+
+            return {
+                'task': 'clf',
+                'n_test': int(len(y_true)),
+                'pos_rate': pos_rate,
+                'auc': auc,
+                'ap': ap,
+                'ap_lift': ap_lift,
+                'p@1%': p_at(0.01),
+                'p@5%': p_at(0.05),
+                'p@10%': p_at(0.10),
+                'brier': brier,
+                'ks': ks,
+                'thresholds': {
+                    't0.5': thr05,
+                    'best_f1': {'threshold': float(best_t), **thr_best},
+                },
+                'probs': probs,
+                'y_true': y_true,
+                'test_index': list(yte.index),
+            }
+
+        # Regression branch
+        try:
+            from sklearn.ensemble import HistGradientBoostingRegressor
+            from sklearn.impute import SimpleImputer
+            imp = SimpleImputer(strategy='median')
+            Xtr_imp = imp.fit_transform(Xtr)
+            Xte_imp = imp.transform(Xte)
+            reg = HistGradientBoostingRegressor(random_state=0)
+            reg.fit(Xtr_imp, ytr)
+            preds = reg.predict(Xte_imp)
+        except Exception:
+            from sklearn.linear_model import LinearRegression
+            from sklearn.pipeline import Pipeline
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.impute import SimpleImputer
+            pipe = Pipeline([
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler(with_mean=True, with_std=True)),
+                ("reg", LinearRegression()),
+            ])
+            pipe.fit(Xtr, ytr)
+            preds = pipe.predict(Xte)
+        y_true = yte.to_numpy(dtype=float)
+        r2 = float(r2_score(y_true, preds)) if len(y_true) else float('nan')
+        mae = float(mean_absolute_error(y_true, preds)) if len(y_true) else float('nan')
+        mse = float(mean_squared_error(y_true, preds)) if len(y_true) else float('nan')
+        rmse = float(_np.sqrt(mse)) if mse == mse else float('nan')
+        try:
+            var_y = float(_np.var(y_true))
+            skill = float(1.0 - (mse / var_y)) if var_y > 0 else float('nan')
+        except Exception:
+            skill = float('nan')
+        try:
+            pear = float(pd.Series(y_true).corr(pd.Series(preds), method='pearson'))
+        except Exception:
+            pear = float('nan')
+        try:
+            spear = float(pd.Series(y_true).corr(pd.Series(preds), method='spearman'))
+        except Exception:
+            spear = float('nan')
+        return {
+            'task': 'reg',
             'n_test': int(len(y_true)),
-            'pos_rate': pos_rate,
-            'auc': auc,
-            'ap': ap,
-            'ap_lift': ap_lift,
-            'p@1%': p_at(0.01),
-            'p@5%': p_at(0.05),
-            'p@10%': p_at(0.10),
-            'brier': brier,
-            'ks': ks,
-            'thresholds': {
-                't0.5': thr05,
-                'best_f1': {'threshold': float(best_t), **thr_best},
-            },
-            'probs': probs,  # include for permutation convenience
+            'r2': r2,
+            'rmse': rmse,
+            'mse': mse,
+            'mae': mae,
+            'skill': skill,
+            'pearson': pear,
+            'spearman': spear,
+            'probs': preds,
             'y_true': y_true,
             'test_index': list(yte.index),
         }
@@ -1328,6 +1955,509 @@ class ValidationWindow(tk.Toplevel):
         self._plot_df_cache = None
         self._plot_out_cache = None
 
+    def _build_online_tab(self, parent: ttk.Frame) -> None:
+        frm = ttk.Frame(parent)
+        frm.pack(side=tk.TOP, fill=tk.X, padx=8, pady=6)
+
+        ttk.Label(frm, text="DF_NAME:").grid(row=0, column=0, sticky=tk.W)
+        self.online_df_var = tk.StringVar(value=self.default_df)
+        ttk.Entry(frm, textvariable=self.online_df_var, width=48).grid(row=0, column=1, sticky=tk.W)
+        ttk.Button(
+            frm,
+            text="Pick .parquet",
+            command=lambda: self._pick_parquet_into(self.online_df_var),
+        ).grid(row=0, column=2, sticky=tk.W, padx=(8, 0))
+
+        ttk.Label(frm, text="Len Data:").grid(row=1, column=0, sticky=tk.W, pady=(6, 0))
+        self.online_len_data_var = tk.IntVar(value=2000)
+        ttk.Entry(frm, textvariable=self.online_len_data_var, width=10).grid(
+            row=1, column=1, sticky=tk.W, pady=(6, 0)
+        )
+
+        ttk.Label(frm, text="Len Plot:").grid(row=1, column=2, sticky=tk.W, padx=(12, 4), pady=(6, 0))
+        self.online_len_plot_var = tk.IntVar(value=300)
+        ttk.Entry(frm, textvariable=self.online_len_plot_var, width=8).grid(
+            row=1, column=3, sticky=tk.W, pady=(6, 0)
+        )
+
+        ttk.Label(frm, text="Interval (s):").grid(row=1, column=4, sticky=tk.W, padx=(12, 4), pady=(6, 0))
+        self.online_interval_var = tk.DoubleVar(value=15.0)
+        ttk.Entry(frm, textvariable=self.online_interval_var, width=8).grid(
+            row=1, column=5, sticky=tk.W, pady=(6, 0)
+        )
+
+        self.online_button = ttk.Button(frm, text="Start", command=self._toggle_online_loop)
+        self.online_button.grid(row=1, column=6, sticky=tk.W, padx=(12, 0), pady=(6, 0))
+
+        ttk.Label(frm, text="Ocultar centro (%):").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        self.online_focus_var = tk.DoubleVar(value=0.0)
+        self.online_focus_label = tk.StringVar(value="0%")
+        self.online_focus_scale = ttk.Scale(
+            frm,
+            from_=0.0,
+            to=90.0,
+            orient=tk.HORIZONTAL,
+            variable=self.online_focus_var,
+            command=self._on_online_focus_change,
+        )
+        self.online_focus_scale.grid(row=2, column=1, columnspan=2, sticky=tk.EW, pady=(10, 0))
+        frm.grid_columnconfigure(1, weight=1)
+        ttk.Label(frm, textvariable=self.online_focus_label).grid(row=2, column=3, sticky=tk.W, pady=(10, 0))
+
+        self.online_info_var = tk.StringVar(value="Idle")
+        ttk.Label(parent, textvariable=self.online_info_var).pack(side=tk.TOP, anchor=tk.W, padx=8)
+
+        self.online_fig = plt.Figure(figsize=(9, 5))
+        self.online_ax = self.online_fig.add_subplot(111)
+        try:
+            self._online_ax_base_pos = self.online_ax.get_position().frozen()
+        except Exception:
+            self._online_ax_base_pos = None
+        cnv = FigureCanvasTkAgg(self.online_fig, master=parent)
+        self.online_canvas = cnv
+        cnv.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        try:
+            NavigationToolbar2Tk(cnv, parent)
+        except Exception:
+            pass
+
+        # Runtime state for the online loop
+        self._online_running = False
+        self._online_stop_event: threading.Event | None = None
+        self._online_thread: threading.Thread | None = None
+        self._online_cbar = None
+        self._online_cbar_task: Optional[str] = None
+        self._online_color_bounds: Dict[str, Tuple[float, float]] = {}
+        self._online_last_payload: Optional[Dict[str, Any]] = None
+
+    def _toggle_online_loop(self) -> None:
+        if getattr(self, '_online_running', False):
+            self._stop_online_loop()
+        else:
+            self._start_online_loop()
+
+    def _on_online_focus_change(self, _value: str) -> None:
+        try:
+            perc = float(self.online_focus_var.get())
+        except Exception:
+            perc = 0.0
+        perc = max(0.0, min(90.0, perc))
+        try:
+            self.online_focus_label.set(f"{perc:.0f}%")
+        except Exception:
+            pass
+        payload = getattr(self, '_online_last_payload', None)
+        if payload:
+            self._render_online_snapshot(payload, store_last=False)
+
+    def _start_online_loop(self) -> None:
+        if getattr(self, '_online_running', False):
+            return
+        try:
+            self.online_info_var.set("Starting...")
+        except Exception:
+            pass
+        self._online_color_bounds.clear()
+        self._online_last_payload = None
+        self._online_stop_event = threading.Event()
+        self._online_running = True
+        try:
+            self.online_button.configure(text="Stop")
+        except Exception:
+            pass
+        self._online_thread = threading.Thread(target=self._run_online_loop, daemon=True)
+        self._online_thread.start()
+
+    def _stop_online_loop(self) -> None:
+        if not getattr(self, '_online_running', False):
+            return
+        try:
+            self.online_info_var.set("Stopping...")
+        except Exception:
+            pass
+        try:
+            if self._online_stop_event is not None:
+                self._online_stop_event.set()
+        except Exception:
+            pass
+
+    def _run_online_loop(self) -> None:
+        import time
+        from scripts.extended_metrics_for_run import _load_selection  # type: ignore
+
+        try:
+            sel = _load_selection(self.db_path, self.run_id)
+        except Exception as e:
+            self.after(0, lambda m=str(e): self._online_handle_error(m, stop=True))
+            self.after(0, self._online_loop_finished)
+            return
+
+        while True:
+            if self._online_stop_event is not None and self._online_stop_event.is_set():
+                break
+            loop_started = time.perf_counter()
+            try:
+                try:
+                    df_name = (self.online_df_var.get().strip()) or (
+                        self.plot_df_var.get().strip() if hasattr(self, 'plot_df_var') else ''
+                    ) or self.df_var.get().strip() or self.default_df
+                except Exception:
+                    df_name = self.default_df
+                try:
+                    len_data = int(float(self.online_len_data_var.get()))
+                except Exception:
+                    len_data = 2000
+                len_data = max(300, len_data)
+                try:
+                    len_plot = int(float(self.online_len_plot_var.get()))
+                except Exception:
+                    len_plot = 300
+                len_plot = max(50, len_plot)
+                try:
+                    interval = float(self.online_interval_var.get())
+                except Exception:
+                    interval = 15.0
+                interval = max(1.0, interval)
+                try:
+                    gap = int(float(self.gap2_var.get()))
+                except Exception:
+                    gap = 0
+
+                from src import storage
+
+                df = None
+                try:
+                    df = storage.refresh_dataframe(df_name)
+                except Exception:
+                    df = self._load_df_flexible(df_name)
+                    if df is None:
+                        df = storage.load_dataframe(df_name)
+                if df is None or df.empty:
+                    raise RuntimeError('Dataset vacío o no encontrado para Try online')
+
+                df_tail = df.iloc[-len_data:].copy()
+                base_name = getattr(df, 'attrs', {}).get('__df_name__')
+                try:
+                    if base_name:
+                        df_tail.attrs['__df_name__'] = base_name
+                    elif isinstance(df_name, str) and df_name:
+                        df_tail.attrs['__df_name__'] = df_name
+                except Exception:
+                    pass
+
+                Xtr, ytr, Xte, yte = self._prepare_xy_local(df_tail, sel, gap=gap)
+                metrics = self._metrics_from_split(sel, Xtr, ytr, Xte, yte)
+
+                try:
+                    idx = pd.Index(metrics.get('test_index') or [])
+                except Exception:
+                    idx = pd.Index([])
+                preds_vals = metrics.get('probs')
+                preds_s = pd.Series(preds_vals, index=idx) if preds_vals is not None else pd.Series(dtype=float)
+                y_vals = metrics.get('y_true')
+                y_s = pd.Series(y_vals, index=idx) if y_vals is not None else pd.Series(dtype=float)
+
+                df_plot = df_tail.iloc[-len_plot:].copy()
+
+                payload = {
+                    'df_plot': df_plot,
+                    'pred_series': preds_s,
+                    'y_series': y_s,
+                    'task': metrics.get('task'),
+                    'len_tail': len(df_tail),
+                    'n_test': metrics.get('n_test'),
+                    'interval': interval,
+                    'timestamp': dt.datetime.now(),
+                }
+
+                self.after(0, lambda data=payload: self._render_online_snapshot(data))
+            except Exception as exc:
+                self.after(0, lambda m=str(exc): self._online_handle_error(m, stop=True))
+                break
+
+            elapsed = time.perf_counter() - loop_started
+            wait_time = max(0.0, interval - elapsed)
+            if wait_time > 0:
+                if self._online_stop_event is not None and self._online_stop_event.wait(wait_time):
+                    break
+
+        self.after(0, self._online_loop_finished)
+
+    def _render_online_snapshot(self, payload: Dict[str, Any], store_last: bool = True) -> None:
+        if store_last:
+            self._online_last_payload = payload
+        df_plot = payload.get('df_plot')
+        if df_plot is None or df_plot.empty:
+            self.online_info_var.set("Sin datos para graficar")
+            return
+        df_plot = df_plot.copy()
+        if 'Date' not in df_plot.columns:
+            df_plot['Date'] = df_plot.index
+        close_col = 'close' if 'close' in df_plot.columns else (df_plot.columns[0] if len(df_plot.columns) else None)
+        if close_col is None:
+            self.online_info_var.set("No se encontró columna close")
+            return
+
+        preds_s = payload.get('pred_series')
+        if isinstance(preds_s, pd.Series):
+            preds_vis = preds_s.reindex(df_plot.index)
+        else:
+            preds_vis = pd.Series(dtype=float)
+
+        task = str(payload.get('task') or 'clf')
+
+        bounds = self._resolve_online_bounds(task, preds_s, df_plot, close_col)
+        vmin, vmax = bounds
+        span = 0.0
+        try:
+            span = max(0.0, min(90.0, float(self.online_focus_var.get())))
+        except Exception:
+            span = 0.0
+        band = (span / 100.0) / 2.0 if span > 0 else 0.0
+        denom = vmax - vmin
+        if denom <= 0:
+            denom = 1.0
+        if isinstance(preds_vis, pd.Series) and band > 0:
+            try:
+                norm_vals = (preds_vis - vmin) / denom
+                keep_mask = (norm_vals < (0.5 - band)) | (norm_vals > (0.5 + band))
+                preds_vis = preds_vis.where(keep_mask)
+            except Exception:
+                pass
+
+        self.online_ax.clear()
+        base_pos = getattr(self, '_online_ax_base_pos', None)
+        if base_pos is not None:
+            try:
+                self.online_ax.set_position(base_pos, which='both')
+            except Exception:
+                base_pos = None
+        self.online_ax.plot(df_plot['Date'], df_plot[close_col], color='black', linewidth=1.0, label=close_col, zorder=1)
+
+        mask = preds_vis.notna()
+        colors = None
+        if mask.any():
+            vals = preds_vis[mask].to_numpy(dtype=float)
+            if task == 'reg':
+                from matplotlib.colors import Normalize
+                norm = Normalize(vmin=vmin, vmax=vmax)
+                cmap = plt.get_cmap('viridis')
+                colors = cmap(norm(vals))
+                from matplotlib.cm import ScalarMappable
+                sm = ScalarMappable(norm=norm, cmap=cmap)
+                sm.set_array([])
+                cbar = getattr(self, '_online_cbar', None)
+                if cbar is not None and getattr(self, '_online_cbar_task', None) != 'reg':
+                    try:
+                        cbar.remove()
+                    except Exception:
+                        pass
+                    try:
+                        cbar.ax.remove()
+                    except Exception:
+                        pass
+                    self._online_cbar = None
+                    self._online_cbar_task = None
+                    cbar = None
+                if cbar is None:
+                    if base_pos is not None:
+                        try:
+                            self.online_ax.set_position(base_pos, which='both')
+                        except Exception:
+                            base_pos = None
+                    try:
+                        self._online_cbar = self.online_fig.colorbar(sm, ax=self.online_ax, pad=0.02)
+                        self._online_cbar.set_label('prediction')
+                        self._online_cbar_task = 'reg'
+                    except Exception:
+                        self._online_cbar = None
+                        self._online_cbar_task = None
+                else:
+                    try:
+                        cbar.update_normal(sm)
+                        cbar.set_label('prediction')
+                        self._online_cbar_task = 'reg'
+                    except Exception:
+                        pass
+            else:
+                from matplotlib.colors import TwoSlopeNorm
+                center = vmin + (vmax - vmin) / 2.0
+                norm = TwoSlopeNorm(vmin=vmin, vcenter=center, vmax=vmax)
+                cmap = plt.get_cmap('RdYlGn')
+                colors = cmap(norm(vals))
+                if getattr(self, '_online_cbar', None) is not None:
+                    try:
+                        self._online_cbar.remove()
+                    except Exception:
+                        pass
+                    try:
+                        self._online_cbar.ax.remove()
+                    except Exception:
+                        pass
+                    self._online_cbar = None
+                    self._online_cbar_task = None
+                    if base_pos is not None:
+                        try:
+                            self.online_ax.set_position(base_pos, which='both')
+                        except Exception:
+                            base_pos = None
+            try:
+                self.online_ax.scatter(
+                    df_plot.loc[mask, 'Date'],
+                    df_plot.loc[mask, close_col],
+                    c=colors,
+                    s=36,
+                    alpha=0.9,
+                    edgecolors='none',
+                    label='prediction',
+                    zorder=3,
+                )
+            except Exception:
+                pass
+        else:
+            if getattr(self, '_online_cbar', None) is not None:
+                try:
+                    self._online_cbar.remove()
+                except Exception:
+                    pass
+                self._online_cbar = None
+                self._online_cbar_task = None
+                if base_pos is not None:
+                    try:
+                        self.online_ax.set_position(base_pos, which='both')
+                    except Exception:
+                        base_pos = None
+
+        self.online_ax.set_title('Close + Prediction (gradient)')
+        self.online_ax.grid(True)
+        try:
+            self.online_ax.legend()
+        except Exception:
+            pass
+        try:
+            self.online_ax.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
+        except Exception:
+            pass
+        try:
+            self.online_canvas.draw_idle()
+        except Exception:
+            pass
+
+        ts = payload.get('timestamp')
+        try:
+            ts_str = ts.strftime('%H:%M:%S') if isinstance(ts, dt.datetime) else ''
+        except Exception:
+            ts_str = ''
+        try:
+            last_bar = df_plot['Date'].iloc[-1]
+            last_str = str(last_bar)
+        except Exception:
+            last_str = 'N/A'
+        preds_count = int(mask.sum())
+        n_test = payload.get('n_test') or 0
+        len_tail = payload.get('len_tail')
+        if len_tail is None:
+            len_tail = len(df_plot)
+        info = (
+            f"Última actualización {ts_str or 'N/A'} | Tail={len_tail} | "
+            f"Preds en gráfico={preds_count}/{n_test} | Último bar={last_str}"
+        )
+        self.online_info_var.set(info)
+
+    def _online_handle_error(self, msg: str, stop: bool = False) -> None:
+        try:
+            self.online_info_var.set(f"Error: {msg}")
+        except Exception:
+            pass
+        if stop:
+            self._stop_online_loop()
+
+    def _resolve_online_bounds(
+        self,
+        task: str,
+        preds: pd.Series,
+        df_plot: pd.DataFrame,
+        close_col: str,
+    ) -> Tuple[float, float]:
+        bounds = self._online_color_bounds.get(task)
+        if bounds is not None:
+            return bounds
+        import numpy as _np
+        if task == 'reg':
+            arr = preds.dropna().to_numpy(dtype=float)
+            if not arr.size:
+                try:
+                    arr = df_plot[close_col].to_numpy(dtype=float)  # type: ignore
+                except Exception:
+                    arr = _np.array([], dtype=float)
+            if arr.size:
+                vmin = float(_np.nanmin(arr))
+                vmax = float(_np.nanmax(arr))
+            else:
+                vmin, vmax = 0.0, 1.0
+        else:
+            vmin, vmax = 0.0, 1.0
+        if not math.isfinite(vmin):
+            vmin = 0.0
+        if not math.isfinite(vmax):
+            vmax = 1.0
+        if vmin == vmax:
+            vmax = vmin + 1.0
+        bounds = (vmin, vmax)
+        self._online_color_bounds[task] = bounds
+        return bounds
+
+    def _online_loop_finished(self) -> None:
+        self._online_running = False
+        try:
+            self.online_button.configure(text="Start")
+        except Exception:
+            pass
+        if self._online_stop_event is not None:
+            try:
+                self._online_stop_event.clear()
+            except Exception:
+                pass
+        self._online_stop_event = None
+        self._online_thread = None
+        self._online_last_payload = None
+        try:
+            current = self.online_info_var.get()
+        except Exception:
+            current = ''
+        if not isinstance(current, str) or not current.startswith('Error'):
+            try:
+                self.online_info_var.set("Idle")
+            except Exception:
+                pass
+
+    def _on_close(self) -> None:
+        try:
+            self._stop_online_loop()
+        except Exception:
+            pass
+        thread = getattr(self, '_online_thread', None)
+        if thread is not None and thread.is_alive():
+            try:
+                if self._online_stop_event is not None:
+                    self._online_stop_event.set()
+                thread.join(timeout=1.0)
+            except Exception:
+                pass
+        self._online_running = False
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
+    def _sel_attr(self, sel: Dict[str, Any], name: str, default: Any = None) -> Any:
+        try:
+            if isinstance(sel, dict):
+                return sel.get(name, default)
+            return getattr(sel, name)
+        except Exception:
+            return default
+
     def _run_plot_compute_async(self) -> None:
         self._start_busy("Computing plot data...")
         threading.Thread(target=self._run_plot_compute_safe, daemon=True).start()
@@ -1343,13 +2473,17 @@ class ValidationWindow(tk.Toplevel):
                 gap = int(float(self.gap2_var.get()))
             except Exception:
                 gap = 0
-            # Load df
-            df = self._load_df_flexible(df_name)
-            if df is None:
-                from src import storage
-                df = storage.load_dataframe(df_name)
-            # Compute metrics to get y_true/probs + test index
-            out = self._compute_metrics(df_name, gap)
+            # Load df: for Plot we refresh the base DF cache from DB when DF_NAME is logical
+            from src import storage
+            try:
+                df = storage.refresh_dataframe(df_name)
+            except Exception:
+                # Fallbacks: direct file path or cached load
+                df = self._load_df_flexible(df_name)
+                if df is None:
+                    df = storage.load_dataframe(df_name)
+            # Compute metrics to get y_true/probs + test index (force recompute, ignore cache)
+            out = self._compute_metrics(df_name, gap, prefer_local=True)
             self._plot_df_cache = df
             self._plot_out_cache = out
             # Schedule redraw
@@ -1405,27 +2539,59 @@ class ValidationWindow(tk.Toplevel):
 
         # 1) Ground truth scatter over close
         self.ax_gt.plot(dfx['Date'], dfx[close_col], color='black', linewidth=1.0, label=close_col, zorder=1)
-        # Map classes to colors
-        try:
-            classes = sorted(pd.unique(y_vis.dropna().astype(int)))
-        except Exception:
-            classes = []
-        palette = ['#d62728', '#2ca02c', '#1f77b4', '#ff7f0e', '#9467bd']
-        color_map = {c: palette[i % len(palette)] for i, c in enumerate(classes)}
+        # Choose rendering by task
+        task = out.get('task')
         mask_gt = y_vis.notna()
+        # Prepare a shared color scale and colorbar for regression
+        shared_norm = None
+        shared_cmap = None
+        if task == 'reg':
+            import numpy as _np
+            from matplotlib.colors import Normalize
+            vals_gt = y_vis[mask_gt].to_numpy(dtype=float) if mask_gt.any() else _np.array([])
+            vals_pr = p_vis[p_vis.notna()].to_numpy(dtype=float) if p_vis is not None else _np.array([])
+            all_vals = _np.concatenate([vals_gt, vals_pr]) if (len(vals_gt) or len(vals_pr)) else _np.array([0.0, 1.0])
+            vmin = _np.nanpercentile(all_vals, 5) if all_vals.size else 0.0
+            vmax = _np.nanpercentile(all_vals, 95) if all_vals.size else 1.0
+            if not _np.isfinite(vmin) or not _np.isfinite(vmax) or vmin == vmax:
+                vmin, vmax = 0.0, 1.0
+            shared_norm = Normalize(vmin=vmin, vmax=vmax)
+            shared_cmap = plt.get_cmap('viridis')
+
         if mask_gt.any():
-            y_classes = y_vis[mask_gt].astype(int)
-            colors_gt = [color_map.get(int(v), '#7f7f7f') for v in y_classes]
-            self.ax_gt.scatter(
-                dfx.loc[mask_gt, 'Date'],
-                dfx.loc[mask_gt, close_col],
-                c=colors_gt,
-                s=36,
-                alpha=0.9,
-                edgecolors='none',
-                label='target',
-                zorder=3,
-            )
+            if task == 'reg':
+                vals = y_vis[mask_gt].to_numpy(dtype=float)
+                colors_gt = shared_cmap(shared_norm(vals)) if shared_norm is not None else '#7f7f7f'
+                self.ax_gt.scatter(
+                    dfx.loc[mask_gt, 'Date'],
+                    dfx.loc[mask_gt, close_col],
+                    c=colors_gt,
+                    s=36,
+                    alpha=0.9,
+                    edgecolors='none',
+                    label='target',
+                    zorder=3,
+                )
+            else:
+                # Classification: map classes to colors
+                try:
+                    classes = sorted(pd.unique(y_vis.dropna().astype(int)))
+                except Exception:
+                    classes = []
+                palette = ['#d62728', '#2ca02c', '#1f77b4', '#ff7f0e', '#9467bd']
+                color_map = {c: palette[i % len(palette)] for i, c in enumerate(classes)}
+                y_classes = y_vis[mask_gt].astype(int)
+                colors_gt = [color_map.get(int(v), '#7f7f7f') for v in y_classes]
+                self.ax_gt.scatter(
+                    dfx.loc[mask_gt, 'Date'],
+                    dfx.loc[mask_gt, close_col],
+                    c=colors_gt,
+                    s=36,
+                    alpha=0.9,
+                    edgecolors='none',
+                    label='target',
+                    zorder=3,
+                )
         self.ax_gt.set_title('Close + Ground Truth (target)')
         self.ax_gt.grid(True)
         try:
@@ -1437,10 +2603,16 @@ class ValidationWindow(tk.Toplevel):
         self.ax_pred.plot(dfx['Date'], dfx[close_col], color='black', linewidth=1.0, label=close_col, zorder=1)
         mask_pr = p_vis.notna()
         if mask_pr.any():
-            from matplotlib.colors import TwoSlopeNorm
-            norm = TwoSlopeNorm(vmin=0.0, vcenter=0.5, vmax=1.0)
-            cmap = plt.get_cmap('RdYlGn')
-            colors_pred = cmap(norm(p_vis[mask_pr].to_numpy(dtype=float)))
+            import numpy as _np
+            if task == 'reg':
+                vals = p_vis[mask_pr].to_numpy(dtype=float)
+                colors_pred = shared_cmap(shared_norm(vals)) if shared_norm is not None else '#7f7f7f'
+            else:
+                from matplotlib.colors import TwoSlopeNorm
+                vals = p_vis[mask_pr].to_numpy(dtype=float)
+                norm = TwoSlopeNorm(vmin=0.0, vcenter=0.5, vmax=1.0)
+                cmap = plt.get_cmap('RdYlGn')
+                colors_pred = cmap(norm(vals))
             self.ax_pred.scatter(
                 dfx.loc[mask_pr, 'Date'],
                 dfx.loc[mask_pr, close_col],
@@ -1448,10 +2620,38 @@ class ValidationWindow(tk.Toplevel):
                 s=36,
                 alpha=0.9,
                 edgecolors='none',
-                label='probs',
+                label='pred',
                 zorder=3,
             )
-        self.ax_pred.set_title('Close + Prediction (prob gradient)')
+        self.ax_pred.set_title('Close + Prediction (gradient)')
+
+        # Add or update colorbar for regression to indicate value mapping
+        try:
+            if task == 'reg' and shared_norm is not None:
+                from matplotlib.cm import ScalarMappable
+                # Remove previous colorbar if any
+                if hasattr(self, '_plot_cbar') and self._plot_cbar is not None:
+                    try:
+                        self._plot_cbar.remove()
+                    except Exception:
+                        pass
+                    self._plot_cbar = None
+                sm = ScalarMappable(norm=shared_norm, cmap=shared_cmap)
+                self._plot_cbar = self.fig_plot.colorbar(sm, ax=[self.ax_gt, self.ax_pred], location='right', pad=0.02)
+                try:
+                    self._plot_cbar.set_label('value')
+                except Exception:
+                    pass
+            else:
+                # Remove colorbar in classification mode
+                if hasattr(self, '_plot_cbar') and self._plot_cbar is not None:
+                    try:
+                        self._plot_cbar.remove()
+                    except Exception:
+                        pass
+                    self._plot_cbar = None
+        except Exception:
+            pass
         self.ax_pred.grid(True)
         try:
             self.ax_pred.legend()
@@ -1598,6 +2798,44 @@ class ValidationWindow(tk.Toplevel):
         feats = {}
         for fid in features_ids:
             try:
+                # Special handling for saved prediction features (pred_*__oof)
+                x = None
+                if isinstance(fid, str) and fid.startswith('pred_'):
+                    try:
+                        from src import storage as _storage
+                        df_name = getattr(df, 'attrs', {}).get('__df_name__')
+                        needs_regen = False
+                        if isinstance(df_name, str) and df_name:
+                            if not _storage.feature_exists(df_name, fid):
+                                needs_regen = True
+                            else:
+                                try:
+                                    tmp = _storage.load_feature(df_name, fid)
+                                    # if stored length is shorter than current df, regenerate
+                                    if len(tmp) < len(df):
+                                        needs_regen = True
+                                except Exception:
+                                    needs_regen = True
+                        if needs_regen and isinstance(df_name, str) and df_name:
+                            # Generate OOF prediction feature for this DF/run selection
+                            try:
+                                from scripts.make_prediction_feature import make_oof_feature  # type: ignore
+                                try:
+                                    folds = max(2, int(float(self.oof_folds_var.get())))
+                                except Exception:
+                                    folds = 4
+                                make_oof_feature(self.run_id, df_name, folds=folds, gap=max(0, int(gap)), out_name=None, db_path=self.db_path)
+                                # Reload registry to pick up new pred_* feature registration
+                                try:
+                                    import importlib, src.prediction_features as pf  # type: ignore
+                                    importlib.reload(pf)
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                # Load/compute feature value now
                 x = registry.features[fid](df)
                 if isinstance(x, pd.DataFrame) and getattr(x, 'shape', (0,0))[1] == 1:
                     x = x.iloc[:,0]
@@ -1859,18 +3097,50 @@ class ValidationWindow(tk.Toplevel):
                 return f"{xf:.5f}"
             except Exception:
                 return str(x)
-        # Add overall rating (0..5) with qualitative label
-        score_5, label = self._grade_overall(out)
+        task = str(out.get('task') or 'clf')
         lines = []
-        lines.append(f"Rating: {score_5:.1f} / 5  ({label})")
-        lines.append(f"DF: {out['df_name']}  |  n_test: {out['n_test']}  |  pos_rate: {fmt(out['pos_rate'])}")
-        lines.append(f"AUC: {fmt(out['auc'])}  |  AP: {fmt(out['ap'])}  |  AP-lift: {fmt(out['ap_lift'])}")
-        lines.append(f"P@1%: {fmt(out['p@1%'])}  |  P@5%: {fmt(out['p@5%'])}  |  P@10%: {fmt(out['p@10%'])}")
-        lines.append(f"Brier: {fmt(out['brier'])}  |  KS: {fmt(out['ks'])}")
-        t05 = out['thresholds']['t0.5']
-        tb = out['thresholds']['best_f1']
-        lines.append(f"@0.5  -> Prec: {fmt(t05['precision'])}, Rec: {fmt(t05['recall'])}, F1: {fmt(t05['f1'])}, Acc: {fmt(t05['accuracy'])}")
-        lines.append(f"@best -> t={fmt(tb['threshold'])} | Prec: {fmt(tb['precision'])}, Rec: {fmt(tb['recall'])}, F1: {fmt(tb['f1'])}, Acc: {fmt(tb['accuracy'])}")
+        if task == 'reg':
+            # Simple regression rating based on skill or r2
+            import math
+            def clamp01(x: float) -> float:
+                try:
+                    v = float(x)
+                except Exception:
+                    return 0.0
+                if not math.isfinite(v):
+                    return 0.0
+                return max(0.0, min(1.0, v))
+            raw = out.get('skill')
+            if raw is None:
+                raw = out.get('r2')
+            score_5 = 5.0 * clamp01(raw if raw is not None else 0.0)
+            if score_5 < 1.0:
+                label = "Muy Mala"
+            elif score_5 < 2.0:
+                label = "Mala"
+            elif score_5 < 3.0:
+                label = "Aceptable"
+            elif score_5 < 4.0:
+                label = "Buena"
+            else:
+                label = "Excelente"
+            lines.append(f"Rating: {score_5:.1f} / 5  ({label}) [reg]")
+            lines.append(f"DF: {out.get('df_name')}  |  n_test: {out.get('n_test')}")
+            lines.append(f"R2: {fmt(out.get('r2'))}  |  Skill: {fmt(out.get('skill'))}")
+            lines.append(f"RMSE: {fmt(out.get('rmse'))}  |  MAE: {fmt(out.get('mae'))}")
+            lines.append(f"Pearson: {fmt(out.get('pearson'))}  |  Spearman: {fmt(out.get('spearman'))}")
+        else:
+            # Classification
+            score_5, label = self._grade_overall(out)
+            lines.append(f"Rating: {score_5:.1f} / 5  ({label})")
+            lines.append(f"DF: {out['df_name']}  |  n_test: {out['n_test']}  |  pos_rate: {fmt(out['pos_rate'])}")
+            lines.append(f"AUC: {fmt(out['auc'])}  |  AP: {fmt(out['ap'])}  |  AP-lift: {fmt(out['ap_lift'])}")
+            lines.append(f"P@1%: {fmt(out['p@1%'])}  |  P@5%: {fmt(out['p@5%'])}  |  P@10%: {fmt(out['p@10%'])}")
+            lines.append(f"Brier: {fmt(out['brier'])}  |  KS: {fmt(out['ks'])}")
+            t05 = out['thresholds']['t0.5']
+            tb = out['thresholds']['best_f1']
+            lines.append(f"@0.5  -> Prec: {fmt(t05['precision'])}, Rec: {fmt(t05['recall'])}, F1: {fmt(t05['f1'])}, Acc: {fmt(t05['accuracy'])}")
+            lines.append(f"@best -> t={fmt(tb['threshold'])} | Prec: {fmt(tb['precision'])}, Rec: {fmt(tb['recall'])}, F1: {fmt(tb['f1'])}, Acc: {fmt(tb['accuracy'])}")
         txt.insert(tk.END, "\n".join(lines) + "\n")
         txt.configure(state=tk.DISABLED)
 
